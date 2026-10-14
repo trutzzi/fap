@@ -421,3 +421,42 @@ export interface CheckInResult {
 export interface ApiError {
   message: string;
 }
+
+// ---- Reports ---------------------------------------------------------------------
+
+export interface CourseReport {
+  /** `null`: check-ins with no training (open gym) or of a deleted training. */
+  courseId: string | null;
+  name: string;
+  color: string;
+  checkins: number;
+  /** Distinct members who came. */
+  members: number;
+  /** Trainings of this course held in the month (up to today). */
+  trainings: number;
+  /** Average check-ins per training held; `null` without trainings. */
+  average: number | null;
+}
+
+export interface InactiveMember {
+  memberId: string;
+  fullName: string;
+  phone: string;
+  planName: string;
+  /** `null` when the member never checked in. */
+  lastCheckIn: string | null;
+  daysSince: number | null;
+}
+
+export interface ReportsSummary {
+  /** `YYYY-MM` */
+  month: string;
+  totals: { checkins: number; members: number; refused: number };
+  byCourse: CourseReport[];
+  /** Check-ins per weekday (1 = Monday) and hour (0–23), only non-zero cells. */
+  heatmap: { weekday: number; hour: number; count: number }[];
+  /** Valid subscription but no check-in for at least `inactiveDays` days. */
+  inactive: InactiveMember[];
+  inactiveDays: number;
+  topMembers: { memberId: string; fullName: string; checkins: number }[];
+}

@@ -62,6 +62,12 @@ export const routes: Routes = [
           import('./features/payments/payments-page').then((m) => m.PaymentsPage),
       },
       {
+        path: 'rapoarte',
+        canActivate: [staffGuard],
+        title: 'Rapoarte · FightAcademy',
+        loadComponent: () => import('./features/reports/reports-page').then((m) => m.ReportsPage),
+      },
+      {
         path: 'admin',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-page').then((m) => m.AdminPage),

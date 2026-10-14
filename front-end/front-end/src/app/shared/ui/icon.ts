@@ -16,7 +16,8 @@ export type IconName =
   | 'check'
   | 'alert'
   | 'card'
-  | 'menu';
+  | 'menu'
+  | 'chart';
 
 /** Decorative stroke icon; give the surrounding control an accessible name. */
 @Component({
@@ -87,6 +88,9 @@ export type IconName =
         }
         @case ('alert') {
           <path d="M12 7v6M12 17h.01" />
+        }
+        @case ('chart') {
+          <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
         }
         @case ('menu') {
           <path d="M4 6h16M4 12h16M4 18h16" />

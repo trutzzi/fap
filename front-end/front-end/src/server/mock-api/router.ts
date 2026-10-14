@@ -15,6 +15,7 @@ import {
 import { isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
 import { DEMO_USERS, MockSessions } from './auth';
 import { MockFinance } from './finance';
+import { MockReports } from './reports';
 import { Db, MemberEntity, nextId, normalizeRfid } from './db';
 import { seed } from './seed';
 import { Views } from './views';
@@ -91,6 +92,7 @@ const MEMBER_FILTERS: MemberFilter[] = ['all', 'active', 'expiring', 'limit', 'e
 export function createMockApi(db: Db = seed()): express.Router {
   const views = new Views(db);
   const finance = new MockFinance(db, views);
+  const reports = new MockReports(db, views);
   const sessions = new MockSessions();
   let club: Club = {
     name: 'Fight Academy Pitești',
@@ -452,6 +454,26 @@ export function createMockApi(db: Db = seed()): express.Router {
     const month = req.query['month'];
     const valid = typeof month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
     res.json(finance.summary(valid ? month : toIsoDate(new Date()).slice(0, 7)));
+  });
+
+  // ---- Reports (staff only) ----
+
+  const monthParam = (value: unknown): string =>
+    typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+      ? value
+      : toIsoDate(new Date()).slice(0, 7);
+
+  api.get('/reports', (req, res) => {
+    res.json(reports.summary(monthParam(req.query['month'])));
+  });
+  api.get('/reports/attendance.csv', (req, res) => {
+    reports.attendanceCsv(res, monthParam(req.query['month']));
+  });
+  api.get('/reports/payments.csv', (req, res) => {
+    reports.paymentsCsv(res, monthParam(req.query['month']));
+  });
+  api.get('/reports/members.csv', (_req, res) => {
+    reports.membersCsv(res);
   });
 
   api.post('/payments', (req, res) => {

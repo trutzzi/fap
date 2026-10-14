@@ -1,0 +1,163 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <div class="month-nav">
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Luna anterioară"
+          (click)="shiftMonth(-1)"
+        >
+          <app-icon name="chevron-left" [size]="18" />
+        </button>
+        <p class="eyebrow" aria-live="polite">{{ monthLabel() }}</p>
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Luna următoare"
+          [disabled]="month() >= currentMonth"
+          (click)="shiftMonth(1)"
+        >
+          <app-icon name="chevron-right" [size]="18" />
+        </button>
+      </div>
+      <h1 class="page-title">Rapoarte</h1>
+    </div>
+    <div class="actions exports" role="group" aria-label="Export Excel (CSV)">
+      <a class="btn btn-sm" [href]="csv('attendance')" download>Prezențe CSV</a>
+      <a class="btn btn-sm" [href]="csv('payments')" download>Plăți CSV</a>
+      <a class="btn btn-sm" [href]="csv('members')" download>Membri CSV</a>
+    </div>
+  </header>
+
+  @if (data.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  }
+
+  @if (data.value(); as d) {
+    <section class="kpis" aria-label="Totaluri">
+      <div class="card kpi">
+        <span class="label-caps">Prezențe</span>
+        <span class="kpi-value display">{{ d.totals.checkins }}</span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">Membri diferiți</span>
+        <span class="kpi-value display">{{ d.totals.members }}</span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">Scanări refuzate</span>
+        <span class="kpi-value display">{{ d.totals.refused }}</span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">Cea mai aglomerată oră</span>
+        <span class="kpi-value display small-value">{{ busiest() }}</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="courses-title">
+        <h2 id="courses-title" class="section-title">Prezențe pe curs</h2>
+        <ul class="bars">
+          @for (c of d.byCourse; track c.courseId ?? 'open') {
+            <li>
+              <div class="bar-head">
+                <span><span class="swatch" [style.background]="c.color"></span> {{ c.name }}</span>
+                <strong>{{ c.checkins }}</strong>
+              </div>
+              <div class="bar" aria-hidden="true">
+                <div
+                  [style.width.%]="(c.checkins / maxCourse()) * 100"
+                  [style.background]="c.color"
+                ></div>
+              </div>
+              <span class="muted small">
+                {{ c.members }} membri
+                @if (c.trainings) {
+                  · {{ c.trainings }} antrenamente · medie {{ c.average }} / antrenament
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="heat-title">
+        <h2 id="heat-title" class="section-title">Ore aglomerate</h2>
+        <div class="heat-wrap">
+          <table class="heat">
+            <caption class="visually-hidden">
+              Prezențe pe zi și oră în
+              {{
+                monthLabel()
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col"><span class="visually-hidden">Zi</span></th>
+                @for (h of hours; track h) {
+                  <th scope="col">{{ h }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of heatmap(); track row.label) {
+                <tr>
+                  <th scope="row">{{ row.label }}</th>
+                  @for (cell of row.cells; track cell.hour) {
+                    <td
+                      [style.--level]="cell.level"
+                      [attr.title]="row.label + ' ' + cell.hour + ':00 · ' + cell.count"
+                    >
+                      <span class="visually-hidden">{{ cell.count }}</span>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="inactive-title">
+        <h2 id="inactive-title" class="section-title">
+          Nu au mai venit ({{ d.inactiveDays }}+ zile)
+        </h2>
+        <p class="muted small" style="margin: 0">
+          Au abonament valid, dar nu au mai trecut pe la sală.
+        </p>
+        <ul class="rows">
+          @for (m of d.inactive; track m.memberId) {
+            <li class="row-item">
+              <div class="who">
+                <a class="name" [routerLink]="['/membri', m.memberId]">{{ m.fullName }}</a>
+                <span class="muted small"
+                  >{{ m.planName }} · {{ lastSeen(m.lastCheckIn, m.daysSince) }}</span
+                >
+              </div>
+              <a class="phone" [href]="'tel:' + m.phone.replaceAll(' ', '')">{{ m.phone }}</a>
+            </li>
+          } @empty {
+            <li class="state-message">Toți membrii activi au venit recent.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="top-title">
+        <h2 id="top-title" class="section-title">Cei mai prezenți</h2>
+        <ol class="rows top">
+          @for (m of d.topMembers; track m.memberId; let i = $index) {
+            <li class="row-item">
+              <span class="rank display">{{ i + 1 }}</span>
+              <a class="name who" [routerLink]="['/membri', m.memberId]">{{ m.fullName }}</a>
+              <strong>{{ m.checkins }}</strong>
+            </li>
+          } @empty {
+            <li class="state-message">Nicio prezență în această lună.</li>
+          }
+        </ol>
+      </section>
+    </div>
+  } @else if (data.loading()) {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>

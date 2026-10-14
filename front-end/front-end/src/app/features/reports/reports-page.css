@@ -1,0 +1,137 @@
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.month-nav .eyebrow {
+  margin: 0;
+  min-width: 130px;
+  text-align: center;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+.kpi {
+  gap: 6px;
+  padding: 18px;
+}
+.kpi-value {
+  font-size: 34px;
+  line-height: 1.1;
+}
+.small-value {
+  font-size: 22px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 20px;
+}
+
+.small {
+  font-size: 13px;
+}
+strong {
+  color: var(--text-strong);
+}
+
+.bars,
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+.bar {
+  height: 8px;
+  margin: 6px 0 4px;
+  border-radius: 6px;
+  background: var(--border);
+  overflow: hidden;
+}
+.bar div {
+  height: 100%;
+  border-radius: 6px;
+}
+
+.heat-wrap {
+  overflow-x: auto;
+}
+.heat {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 11px;
+}
+.heat th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: center;
+}
+.heat td {
+  height: 22px;
+  min-width: 18px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--primary) calc(var(--level) * 100%), var(--surface-hover));
+}
+
+.rows {
+  gap: 8px;
+}
+.rows .row-item {
+  flex-wrap: wrap;
+}
+.who {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.name {
+  font-weight: 600;
+  color: var(--text-strong);
+  text-decoration: none;
+}
+.name:hover {
+  color: var(--accent);
+}
+.phone {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rank {
+  width: 24px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 700px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .kpi-value {
+    font-size: 26px;
+  }
+  .small-value {
+    font-size: 16px;
+  }
+  .exports {
+    width: 100%;
+  }
+  .exports .btn {
+    flex: 1;
+  }
+}
