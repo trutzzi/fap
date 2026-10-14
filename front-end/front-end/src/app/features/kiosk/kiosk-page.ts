@@ -17,6 +17,7 @@ import { CheckInRequest, CheckInResult } from '../../core/api/models';
 import { checkInMessage } from '../../core/checkin-messages';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { formatDayMonth } from '../../core/util/dates';
+import { FeedbackSound } from '../../core/util/feedback-sound';
 import { clock, onInterval } from '../../core/util/interval';
 import { MemberPickerDialog } from '../../shared/dialogs/member-picker-dialog';
 import { Icon } from '../../shared/ui/icon';
@@ -57,6 +58,7 @@ export class KioskPage {
   private readonly academy = inject(AcademyService);
   /** Name search needs member data, which coaches may not read. */
   protected readonly canSearch = inject(AuthService).isStaff;
+  protected readonly sound = inject(FeedbackSound);
   private readonly reader = viewChild.required<ElementRef<HTMLInputElement>>('reader');
 
   protected readonly now = clock();
@@ -137,6 +139,7 @@ export class KioskPage {
 
   private show(result: CheckInResult): void {
     this.result.set(result);
+    this.sound.play(checkInMessage(result).tone);
     clearTimeout(this.resetTimer);
     this.resetTimer = setTimeout(() => this.result.set(null), RESULT_VISIBLE_MS);
   }

@@ -49,6 +49,10 @@
 strong {
   color: var(--text-strong);
 }
+.sound {
+  font-size: 13px;
+  padding: 0 12px;
+}
 .clock {
   font-size: 44px;
 }

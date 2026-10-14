@@ -224,3 +224,18 @@ describe('catalog and insights', () => {
     expect(bad.status).toBe(400);
   });
 });
+
+describe('double check-in protection', () => {
+  it('is enforced by the database, not only by the application', async () => {
+    const { id } = await createMember();
+    const row = {
+      memberId: id,
+      slotId: 'kb-wed',
+      date: toDbDate('2026-10-14'),
+      method: 'rfid' as const,
+    };
+    await db.checkIn.create({ data: row });
+    // If a future `prisma migrate dev` drops the partial unique index, this fails.
+    await expect(db.checkIn.create({ data: row })).rejects.toMatchObject({ code: 'P2002' });
+  });
+});

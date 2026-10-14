@@ -39,6 +39,7 @@ npm run user:deactivate -- --email x@club.ro
   - Roles: `admin` can do everything. `reception` cannot write courses, slots, plans or the club, and cannot delete members. Use `requireAdmin` on a route, or `assertAdmin(req)` inside a handler when a middleware would break Express param typing.
   - Failed logins are rate-limited in memory: 10 per email and 50 per IP per 15 minutes.
   - There is no accounts screen; use the `user:*` scripts. Never commit passwords: the seed reads `SEED_*_PASSWORD` or generates them.
+- **Partial unique indexes** (`check_ins` and `refused_scans`: one row per member, training and day) are created in raw SQL migrations, because Prisma's schema can't express `WHERE`. When `prisma migrate dev` generates a new migration, remove any `DROP INDEX` for `check_ins_member_slot_date_key` / `refused_scans_member_slot_date_key`. A test in `test/api.test.ts` fails if the index is missing.
 - **Club:** a single `club` row (id 1). Its timezone becomes `process.env.TZ` at startup and on save.
 - **Errors:** throw `HttpError` (`badRequest` / `notFound` / `conflict`) with a Romanian user-facing message. Validation uses Zod schemas in `src/lib/validation.ts` via `parse()`, which returns the first issue's message. The error handler in `app.ts` also maps Prisma P2025 → 404 and P2002 → 409.
 - **Prisma 7 specifics:**

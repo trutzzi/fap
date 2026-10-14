@@ -13,6 +13,15 @@
           <strong>Niciun antrenament acum</strong>
         }
       </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon sound"
+        [attr.aria-pressed]="!sound.muted()"
+        [attr.aria-label]="sound.muted() ? 'Pornește sunetul' : 'Oprește sunetul'"
+        (click)="sound.toggleMuted()"
+      >
+        {{ sound.muted() ? 'Sunet oprit' : 'Sunet pornit' }}
+      </button>
       <time class="display clock">{{ now() | date: 'HH:mm' }}</time>
     </div>
   </header>

@@ -100,7 +100,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Andrei',
       last: 'Popescu',
-      phone: '0722 513 418',
+      phone: '+40 722 513 418',
       courses: ['kb'],
       plan: 'sessions12',
       startOffset: -13,
@@ -111,7 +111,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Maria',
       last: 'Ionescu',
-      phone: '0745 220 102',
+      phone: '+40 745 220 102',
       courses: ['kb', 'bjj'],
       plan: 'unlimited',
       startOffset: -13,
@@ -122,7 +122,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Radu',
       last: 'Dinu',
-      phone: '0731 874 559',
+      phone: '+40 731 874 559',
       courses: ['bjj', 'mma'],
       plan: 'sessions12',
       startOffset: -18,
@@ -133,7 +133,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Bogdan',
       last: 'Georgescu',
-      phone: '0768 109 233',
+      phone: '+40 768 109 233',
       courses: ['kb'],
       plan: 'sessions12',
       startOffset: -22,
@@ -144,7 +144,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Ioana',
       last: 'Marin',
-      phone: '0724 661 870',
+      phone: '+40 724 661 870',
       courses: ['box'],
       plan: 'unlimited',
       startOffset: endingIn(2),
@@ -155,7 +155,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'David',
       last: 'Toma',
-      phone: '0740 452 315',
+      phone: '+40 740 452 315',
       courses: ['kids'],
       plan: 'sessions12',
       startOffset: -22,
@@ -166,7 +166,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Alexia',
       last: 'Badea',
-      phone: '0752 337 644',
+      phone: '+40 752 337 644',
       courses: ['kar'],
       plan: 'sessions12',
       startOffset: -13,
@@ -177,7 +177,7 @@ function designMembers(today: string): MemberSeed[] {
     {
       first: 'Vlad',
       last: 'Petrescu',
-      phone: '0733 018 921',
+      phone: '+40 733 018 921',
       courses: ['mma', 'kb'],
       plan: 'sessions12',
       startOffset: endingIn(-14),
@@ -246,7 +246,7 @@ function generatedMembers(rand: () => number, count: number): MemberSeed[] {
     }
     const expired = i % 8 === 7;
     const withoutCard = i >= count - 3;
-    const phone = `07${Math.floor(20 + rand() * 60)} ${Math.floor(100 + rand() * 900)} ${Math.floor(100 + rand() * 900)}`;
+    const phone = `+40 7${Math.floor(20 + rand() * 60)} ${Math.floor(100 + rand() * 900)} ${Math.floor(100 + rand() * 900)}`;
     result.push({
       first: FIRST[(i * 7) % FIRST.length],
       last: LAST[(i * 3 + Math.floor(i / FIRST.length)) % LAST.length],
