@@ -68,6 +68,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports-page').then((m) => m.ReportsPage),
       },
       {
+        path: 'logs',
+        canActivate: [adminGuard],
+        title: 'Logs · FightAcademy',
+        loadComponent: () => import('./features/logs/logs-page').then((m) => m.LogsPage),
+      },
+      {
         path: 'admin',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-page').then((m) => m.AdminPage),

@@ -285,3 +285,30 @@ model Payment {
   @@index([periodId])
   @@map("payments")
 }
+
+/// One probe by the uptime worker (src/uptime.ts); pruned after 30 days.
+model UptimeCheck {
+  id        String   @id @default(cuid())
+  target    String
+  ok        Boolean
+  status    Int?
+  latencyMs Int?     @map("latency_ms")
+  error     String?
+  checkedAt DateTime @default(now()) @map("checked_at") @db.Timestamptz
+
+  @@index([target, checkedAt])
+  @@index([checkedAt])
+  @@map("uptime_checks")
+}
+
+/// Unexpected server errors (HTTP 500) and worker failures, shown on the admin logs page.
+model ErrorLog {
+  id        String   @id @default(cuid())
+  source    String
+  message   String
+  path      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("error_logs")
+}

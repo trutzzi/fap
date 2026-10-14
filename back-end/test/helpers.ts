@@ -26,7 +26,7 @@ export async function resetData(): Promise<void> {
   now = START();
   passwordHash ??= await hashPassword(PASSWORD); // scrypt is slow on purpose: hash once
   await db.$executeRawUnsafe(
-    'TRUNCATE payments, subscription_periods, sessions, users, club, check_ins, subscriptions, member_courses, members, training_slots, courses, plans CASCADE',
+    'TRUNCATE uptime_checks, error_logs, payments, subscription_periods, sessions, users, club, check_ins, subscriptions, member_courses, members, training_slots, courses, plans CASCADE',
   );
   await db.user.createMany({
     data: Object.values(USERS).map((u) => ({ ...u, passwordHash: passwordHash! })),

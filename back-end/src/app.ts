@@ -17,6 +17,8 @@ import { checkInsRouter } from './modules/check-ins/check-ins.routes.js';
 import { clubRouter } from './modules/club/club.routes.js';
 import { financeRouter } from './modules/finance/finance.routes.js';
 import { insightsRouter } from './modules/insights/insights.routes.js';
+import { logsRouter } from './modules/logs/logs.routes.js';
+import { recordError } from './modules/logs/uptime-checks.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { membersRouter } from './modules/members/members.routes.js';
 import { memberPhotosRouter } from './modules/members/photos.routes.js';
@@ -62,40 +64,49 @@ export function createApp({
   api.use(insightsRouter(deps));
   api.use(financeRouter(deps));
   api.use(reportsRouter(deps));
+  api.use(logsRouter(deps));
   api.use(checkInsRouter(deps));
   api.use((_req, _res, next) => next(new HttpError(404, 'Resursa nu există.')));
   app.use('/api', api);
 
-  app.use(errorHandler);
+  app.use(errorHandler(deps));
   return app;
 }
 
 /** Maps errors to `{ message }` JSON responses — the shape the front-end displays. */
-const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
-  if (err instanceof HttpError) {
-    res.status(err.status).json({ message: err.message });
-    return;
-  }
-  if ((err as { type?: string }).type === 'entity.parse.failed') {
-    res.status(400).json({ message: 'Corpul cererii nu este JSON valid.' });
-    return;
-  }
-  if ((err as { type?: string }).type === 'entity.too.large') {
-    res.status(413).json({ message: 'Fișierul este prea mare.' });
-    return;
-  }
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === 'P2025') {
-      res.status(404).json({ message: 'Resursa nu a fost găsită.' });
+const errorHandler =
+  ({ db }: Deps): ErrorRequestHandler =>
+  (err, req, res, _next) => {
+    if (err instanceof HttpError) {
+      res.status(err.status).json({ message: err.message });
       return;
     }
-    if (err.code === 'P2002') {
-      res.status(409).json({
-        message: 'Valoarea există deja (de exemplu, cardul RFID este alocat altui membru).',
-      });
+    if ((err as { type?: string }).type === 'entity.parse.failed') {
+      res.status(400).json({ message: 'Corpul cererii nu este JSON valid.' });
       return;
     }
-  }
-  (req.log ?? console).error(err);
-  res.status(500).json({ message: 'Eroare internă a serverului.' });
-};
+    if ((err as { type?: string }).type === 'entity.too.large') {
+      res.status(413).json({ message: 'Fișierul este prea mare.' });
+      return;
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P2025') {
+        res.status(404).json({ message: 'Resursa nu a fost găsită.' });
+        return;
+      }
+      if (err.code === 'P2002') {
+        res.status(409).json({
+          message: 'Valoarea există deja (de exemplu, cardul RFID este alocat altui membru).',
+        });
+        return;
+      }
+    }
+    (req.log ?? console).error(err);
+    void recordError(
+      db,
+      'api',
+      err instanceof Error ? err.message : String(err),
+      `${req.method} ${req.path}`,
+    );
+    res.status(500).json({ message: 'Eroare internă a serverului.' });
+  };

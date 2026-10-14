@@ -64,6 +64,27 @@ services:
         aliases: [fap-api]
     mem_limit: 512m
 
+  # Probes the API, the site and the public HTTPS URL every minute; results feed the
+  # admin "logs" page. Same image as the API, different entry point.
+  uptime:
+    image: ghcr.io/trutzzi/fap-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: ['node', 'dist/uptime.js']
+    environment:
+      DATABASE_URL: *database-url
+      NODE_ENV: production
+      LOG_LEVEL: info
+      UPTIME_INTERVAL_SECONDS: '60'
+      UPTIME_TARGETS: >-
+        API|http://api:3000/health,
+        Site|http://fap-web:4000/login|fap.valentintruta.ro,
+        HTTPS public|https://fap.valentintruta.ro/login
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal, proxy]
+    mem_limit: 128m
+
   web:
     image: ghcr.io/trutzzi/fap-web:${IMAGE_TAG:-latest}
     restart: unless-stopped

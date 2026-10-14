@@ -176,3 +176,16 @@ nav a.active {
     padding: 20px 16px 40px;
   }
 }
+
+.logs-link {
+  align-self: center;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.35;
+  text-decoration: none;
+}
+.logs-link:hover,
+.logs-link:focus-visible {
+  opacity: 1;
+}

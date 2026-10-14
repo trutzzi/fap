@@ -48,3 +48,7 @@ npm run user:deactivate -- --email x@club.ro
   - Import it from `./generated/prisma/client.js`.
   - Code helpers that must also work inside transactions take `DbClient`.
   - Prisma refuses destructive commands (`migrate reset`) when it detects an AI agent unless the user consents. Don't bypass that guard. Tests use `migrate deploy` plus `TRUNCATE`.
+
+## Uptime worker and logs
+
+`src/uptime.ts` is a second entry point (`npm run uptime`; the `uptime` service in `deploy/docker-compose.yml` runs `node dist/uptime.js` from the API image). Every `UPTIME_INTERVAL_SECONDS` it probes `UPTIME_TARGETS` (`name|url[|host]`, comma-separated) into `uptime_checks`. The error handler records HTTP 500s into `error_logs`. Both are pruned after 30 days and shown by `GET /api/logs` (admin only), the front-end's `/logs` page that is linked by a faint "logs" link at the bottom of the sidebar.

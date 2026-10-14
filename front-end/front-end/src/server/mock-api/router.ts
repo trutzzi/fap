@@ -1,5 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import {
+  ErrorLogEntry,
+  LogsSummary,
   CheckInResult,
   Club,
   CourseInput,
@@ -611,16 +613,57 @@ export function createMockApi(db: Db = seed()): express.Router {
     return reply('allowed', label);
   });
 
+  // ---- Logs (admin only) ----
+
+  /** Unexpected errors of this mock server; there is no uptime worker, so checks are fake. */
+  const errorLog: ErrorLogEntry[] = [];
+
+  api.get('/logs', (req, res) => {
+    assertAdmin(req);
+    const now = Date.now();
+    const at = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString();
+    const target = (name: string, latencyMs: number, uptime7d: number) => ({
+      name,
+      up: true,
+      lastCheckedAt: at(0.5),
+      latencyMs,
+      lastError: null,
+      uptime24h: 100,
+      uptime7d,
+    });
+    const body: LogsSummary = {
+      targets: [target('API', 4, 100), target('Site', 18, 100), target('HTTPS public', 63, 99.9)],
+      incidents: [
+        {
+          target: 'HTTPS public',
+          from: at(3 * 1440),
+          to: at(3 * 1440 - 4),
+          checks: 5,
+          error: 'ETIMEDOUT',
+        },
+      ],
+      errors: errorLog.slice(0, 50),
+    };
+    res.json(body);
+  });
+
   // ---- Errors ----
 
   api.use((_req, _res, next) => next(new HttpError(404, 'Resursa nu există.')));
-  api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  api.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof HttpError) {
       res.status(err.status).json({ message: err.message });
     } else if ((err as { type?: string }).type === 'entity.parse.failed') {
       res.status(400).json({ message: 'Corpul cererii nu este JSON valid.' });
     } else {
       console.error(err);
+      errorLog.unshift({
+        id: nextId('err'),
+        createdAt: new Date().toISOString(),
+        source: 'api',
+        message: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+        path: `${req.method} ${req.path}`,
+      });
       res.status(500).json({ message: 'Eroare internă a serverului.' });
     }
   });

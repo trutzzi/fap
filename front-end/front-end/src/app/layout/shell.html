@@ -41,6 +41,10 @@
           <button type="button" class="btn btn-sm btn-ghost" (click)="logout()">Ieșire</button>
         </div>
       }
+      @if (user()?.role === 'admin') {
+        <!-- Deliberately inconspicuous: a technical page for the administrator. -->
+        <a class="logs-link" routerLink="/logs">logs</a>
+      }
     </div>
   </aside>
   <main id="main" class="content" tabindex="-1">

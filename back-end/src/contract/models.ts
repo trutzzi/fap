@@ -460,3 +460,40 @@ export interface ReportsSummary {
   inactiveDays: number;
   topMembers: { memberId: string; fullName: string; checkins: number }[];
 }
+
+// ---- Logs (admin only) ----
+
+export interface UptimeTarget {
+  name: string;
+  /** `null` before the first check. */
+  up: boolean | null;
+  lastCheckedAt: string | null;
+  latencyMs: number | null;
+  lastError: string | null;
+  /** Share of successful checks, 0–100 with one decimal; `null` without checks. */
+  uptime24h: number | null;
+  uptime7d: number | null;
+}
+
+/** Consecutive failed checks of one target. */
+export interface UptimeIncident {
+  target: string;
+  from: string;
+  to: string;
+  checks: number;
+  error: string | null;
+}
+
+export interface ErrorLogEntry {
+  id: string;
+  createdAt: string;
+  source: string;
+  message: string;
+  path: string | null;
+}
+
+export interface LogsSummary {
+  targets: UptimeTarget[];
+  incidents: UptimeIncident[];
+  errors: ErrorLogEntry[];
+}

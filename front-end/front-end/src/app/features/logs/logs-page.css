@@ -1,0 +1,45 @@
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row-item {
+  flex-wrap: wrap;
+}
+.grow {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+.mono .grow {
+  display: block;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+.small {
+  font-size: 12px;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: none;
+}
+.dot.up {
+  background: var(--success);
+}
+.dot.down {
+  background: var(--danger);
+}
+.pct {
+  white-space: nowrap;
+  font-weight: 600;
+}

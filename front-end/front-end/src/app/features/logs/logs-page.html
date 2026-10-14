@@ -1,0 +1,92 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Doar administrator</p>
+      <h1 class="page-title">Logs</h1>
+    </div>
+    <button type="button" class="btn btn-sm" (click)="data.reload()">Reîncarcă</button>
+  </header>
+
+  @if (data.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  }
+
+  @if (data.value(); as d) {
+    <section class="card" aria-labelledby="uptime-title">
+      <h2 id="uptime-title" class="section-title">Uptime</h2>
+      <ul class="rows">
+        @for (t of d.targets; track t.name) {
+          <li class="row-item">
+            <span
+              class="dot"
+              [class.up]="t.up"
+              [class.down]="t.up === false"
+              aria-hidden="true"
+            ></span>
+            <div class="grow">
+              <strong>{{ t.name }}</strong>
+              <span class="muted small">
+                {{ t.up ? 'funcționează' : 'NU răspunde' }}
+                @if (t.latencyMs !== null) {
+                  · {{ t.latencyMs }} ms
+                }
+                @if (t.lastCheckedAt) {
+                  · verificat {{ time(t.lastCheckedAt) }}
+                }
+                @if (!t.up && t.lastError) {
+                  · {{ t.lastError }}
+                }
+              </span>
+            </div>
+            <span class="pct">
+              <span class="muted small">24h</span> {{ pct(t.uptime24h) }}
+              <span class="muted small">7z</span> {{ pct(t.uptime7d) }}
+            </span>
+          </li>
+        } @empty {
+          <li class="state-message">Încă nu există verificări (serviciul de uptime nu a rulat).</li>
+        }
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="incidents-title">
+      <h2 id="incidents-title" class="section-title">Întreruperi (7 zile)</h2>
+      <ul class="rows mono">
+        @for (i of d.incidents; track i.target + i.from) {
+          <li class="row-item">
+            <span class="grow"
+              >{{ time(i.from) }} · <strong>{{ i.target }}</strong> ·
+              {{ i.error ?? 'eroare' }}</span
+            >
+            <span class="muted small"
+              >{{ duration(i.from, i.to) }} ({{ i.checks }} verificări)</span
+            >
+          </li>
+        } @empty {
+          <li class="state-message">Nicio întrerupere.</li>
+        }
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="errors-title">
+      <h2 id="errors-title" class="section-title">Erori server (ultimele 50)</h2>
+      <ul class="rows mono">
+        @for (e of d.errors; track e.id) {
+          <li class="row-item">
+            <span class="grow">
+              {{ time(e.createdAt) }} · {{ e.source }}
+              @if (e.path) {
+                · {{ e.path }}
+              }
+              <br /><span class="muted">{{ e.message }}</span>
+            </span>
+          </li>
+        } @empty {
+          <li class="state-message">Nicio eroare.</li>
+        }
+      </ul>
+    </section>
+  } @else if (data.loading()) {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>
