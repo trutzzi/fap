@@ -114,26 +114,65 @@ nav a.active {
   top: 16px;
 }
 
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.menu-toggle {
+  display: none;
+}
+.menu {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 28px;
+  min-height: 0;
+}
+
+/* Phones and portrait tablets: a sticky top bar; the menu opens below it. */
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
-    position: static;
+    z-index: 20;
     height: auto;
-    gap: 16px;
-    padding: 16px;
+    gap: 0;
+    padding: 10px 16px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
-  nav ul {
-    flex-direction: row;
-    overflow-x: auto;
+  .brand img {
+    width: 38px;
+    height: auto;
+  }
+  .brand-name {
+    font-size: 18px;
+  }
+  .menu-toggle {
+    display: inline-flex;
+    min-width: 44px;
+  }
+  .menu {
+    display: none;
+    gap: 16px;
+    padding: 12px 0 8px;
+  }
+  .menu.open {
+    display: flex;
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+  }
+  nav a {
+    min-height: 48px;
+    font-size: 16px;
   }
   .account {
     margin-top: 0;
   }
   .content {
-    padding: 24px 16px 40px;
+    padding: 20px 16px 40px;
   }
 }

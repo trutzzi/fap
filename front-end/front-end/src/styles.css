@@ -474,3 +474,48 @@ fieldset.field {
 .field > .check {
   align-self: flex-start;
 }
+
+/* ---- Touch screens and small viewports ---- */
+
+/* Fingers need bigger targets than a mouse pointer (WCAG 2.5.5: 44×44px). */
+@media (pointer: coarse) {
+  .btn-sm,
+  .chip,
+  .check {
+    min-height: 44px;
+  }
+  .btn-icon {
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 700px) {
+  /* 16px stops iOS Safari from zooming into a field when it gets focus. */
+  .input {
+    font-size: 16px;
+  }
+  .page-title {
+    font-size: 30px;
+  }
+  .page-header {
+    align-items: stretch;
+  }
+  .page-header > .actions,
+  .page-header > .btn {
+    width: 100%;
+  }
+  .page-header > .actions > .btn {
+    flex: 1;
+  }
+  .card {
+    padding: 16px;
+  }
+  /* Dialogs use the full width and stack their buttons on phones. */
+  .form-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .form-footer .start {
+    margin-right: 0;
+  }
+}

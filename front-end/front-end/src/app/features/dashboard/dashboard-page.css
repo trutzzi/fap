@@ -196,3 +196,19 @@ strong {
 .attendees[open] summary {
   margin-bottom: 8px;
 }
+
+@media (max-width: 700px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .kpi {
+    padding: 14px;
+  }
+  .kpi-value {
+    font-size: 32px;
+  }
+  .chart {
+    gap: 6px;
+  }
+}

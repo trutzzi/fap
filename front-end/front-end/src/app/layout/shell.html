@@ -1,32 +1,47 @@
 <a class="skip-link" href="#main">Sari la conținut</a>
 <div class="shell">
   <aside class="sidebar">
-    <a class="brand" routerLink="/dashboard" aria-label="FightAcademy — Dashboard">
-      <img ngSrc="logo-fight-academy.png" width="46" height="43" alt="" priority />
-      <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
-    </a>
-    <nav aria-label="Navigare principală">
-      <ul>
-        @for (item of nav(); track item.path) {
-          <li>
-            <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
-              <app-icon [name]="item.icon" />
-              {{ item.label }}
-            </a>
-          </li>
-        }
-      </ul>
-    </nav>
-    @if (user(); as u) {
-      <div class="account">
-        <span class="avatar">{{ u.name.slice(0, 1).toUpperCase() }}</span>
-        <span class="who">
-          <strong>{{ u.name }}</strong>
-          <span class="muted">{{ roleLabel() }}</span>
-        </span>
-        <button type="button" class="btn btn-sm btn-ghost" (click)="logout()">Ieșire</button>
-      </div>
-    }
+    <div class="bar">
+      <a class="brand" routerLink="/" aria-label="FightAcademy — pagina principală">
+        <img ngSrc="logo-fight-academy.png" width="46" height="43" alt="" priority />
+        <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
+      </a>
+      <!-- Phones and portrait tablets: the menu collapses behind this button. -->
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon menu-toggle"
+        aria-controls="main-menu"
+        [attr.aria-expanded]="menuOpen()"
+        [attr.aria-label]="menuOpen() ? 'Închide meniul' : 'Deschide meniul'"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <app-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="24" />
+      </button>
+    </div>
+    <div id="main-menu" class="menu" [class.open]="menuOpen()">
+      <nav aria-label="Navigare principală">
+        <ul>
+          @for (item of nav(); track item.path) {
+            <li>
+              <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+                <app-icon [name]="item.icon" />
+                {{ item.label }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+      @if (user(); as u) {
+        <div class="account">
+          <span class="avatar">{{ u.name.slice(0, 1).toUpperCase() }}</span>
+          <span class="who">
+            <strong>{{ u.name }}</strong>
+            <span class="muted">{{ roleLabel() }}</span>
+          </span>
+          <button type="button" class="btn btn-sm btn-ghost" (click)="logout()">Ieșire</button>
+        </div>
+      }
+    </div>
   </aside>
   <main id="main" class="content" tabindex="-1">
     <router-outlet />

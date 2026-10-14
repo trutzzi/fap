@@ -15,7 +15,8 @@ export type IconName =
   | 'chevron-right'
   | 'check'
   | 'alert'
-  | 'card';
+  | 'card'
+  | 'menu';
 
 /** Decorative stroke icon; give the surrounding control an accessible name. */
 @Component({
@@ -86,6 +87,9 @@ export type IconName =
         }
         @case ('alert') {
           <path d="M12 7v6M12 17h.01" />
+        }
+        @case ('menu') {
+          <path d="M4 6h16M4 12h16M4 18h16" />
         }
         @case ('card') {
           <rect x="5" y="3" width="14" height="18" rx="2" />

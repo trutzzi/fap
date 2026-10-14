@@ -146,3 +146,58 @@ strong {
   text-align: center;
   font-weight: 700;
 }
+
+/* Phones: each member becomes a card; labels come from data-label. */
+@media (max-width: 700px) {
+  .table-wrap {
+    overflow: visible;
+    background: none;
+    border: 0;
+  }
+  table {
+    min-width: 0;
+  }
+  thead {
+    display: none;
+  }
+  tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+  td {
+    display: contents;
+    white-space: normal;
+  }
+  td::before {
+    content: attr(data-label);
+    font: 400 12px var(--font-body);
+    color: var(--text-muted);
+    align-self: center;
+  }
+  /* The member cell spans the card as its title. */
+  td[data-label='Membru']::before {
+    content: none;
+  }
+  td[data-label='Membru'] > .member {
+    grid-column: 1 / -1;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  td.state-message {
+    display: block;
+    grid-column: 1 / -1;
+  }
+  .meter {
+    width: 96px;
+  }
+}

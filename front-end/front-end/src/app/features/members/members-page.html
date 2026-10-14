@@ -69,7 +69,7 @@
       <tbody>
         @for (m of members.value()?.items ?? []; track m.id) {
           <tr>
-            <td>
+            <td data-label="Membru">
               <a class="member" [routerLink]="['/membri', m.id]">
                 <app-member-avatar [initials]="m.initials" [photoUrl]="m.photoUrl" [size]="36" />
                 <span>
@@ -78,15 +78,15 @@
                 </span>
               </a>
             </td>
-            <td>
+            <td data-label="Cursuri">
               <div class="tags">
                 @for (c of m.courses; track c.id) {
                   <span class="tag" [style.color]="c.color">{{ c.name }}</span>
                 }
               </div>
             </td>
-            <td class="strong">{{ m.subscription?.planName ?? '—' }}</td>
-            <td>
+            <td data-label="Abonament" class="strong">{{ m.subscription?.planName ?? '—' }}</td>
+            <td data-label="Utilizare">
               @if (m.subscription; as s) {
                 @if (s.sessionLimit !== null) {
                   <div class="usage">
@@ -114,11 +114,15 @@
                 <span class="muted">—</span>
               }
             </td>
-            <td [class.muted]="m.status === 'expired'" [class.warn]="m.status === 'expiring'">
+            <td
+              data-label="Valabil până la"
+              [class.muted]="m.status === 'expired'"
+              [class.warn]="m.status === 'expiring'"
+            >
               {{ m.subscription?.endDate | isoDate }}
             </td>
-            <td class="mono muted">{{ m.rfid | rfid }}</td>
-            <td><app-status-badge [status]="m.status" /></td>
+            <td data-label="Card RFID" class="mono muted">{{ m.rfid | rfid }}</td>
+            <td data-label="Status"><app-status-badge [status]="m.status" /></td>
           </tr>
         } @empty {
           <tr>
