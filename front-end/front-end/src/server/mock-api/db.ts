@@ -1,4 +1,10 @@
-import { CheckInMethod, PlanId, RefusalReason, TrainingSlot } from '../../app/core/api/models';
+import {
+  CheckInMethod,
+  PaymentMethod,
+  PlanId,
+  RefusalReason,
+  TrainingSlot,
+} from '../../app/core/api/models';
 
 export interface PlanEntity {
   id: PlanId;
@@ -70,6 +76,30 @@ export interface Db {
   members: MemberEntity[];
   checkins: CheckInEntity[];
   refusedScans: RefusedScanEntity[];
+  periods: PeriodEntity[];
+  payments: PaymentEntity[];
+}
+
+/** A sold subscription period (history); unique per member and start date. */
+export interface PeriodEntity {
+  id: string;
+  memberId: string;
+  planId: PlanId;
+  startDate: string;
+  endDate: string;
+  price: number | null;
+}
+
+export interface PaymentEntity {
+  id: string;
+  memberId: string;
+  periodId: string | null;
+  amount: number;
+  method: PaymentMethod;
+  paidAt: string;
+  date: string;
+  receivedBy: string | null;
+  note: string;
 }
 
 let sequence = 1000;

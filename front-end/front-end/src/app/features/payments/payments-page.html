@@ -1,0 +1,178 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <div class="month-nav">
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Luna anterioară"
+          (click)="shiftMonth(-1)"
+        >
+          <app-icon name="chevron-left" [size]="18" />
+        </button>
+        <p class="eyebrow" aria-live="polite">{{ monthLabel() }}</p>
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Luna următoare"
+          [disabled]="month() >= currentMonth"
+          (click)="shiftMonth(1)"
+        >
+          <app-icon name="chevron-right" [size]="18" />
+        </button>
+      </div>
+      <h1 class="page-title">Plăți &amp; abonamente</h1>
+    </div>
+  </header>
+
+  @if (data.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  }
+
+  @if (data.value(); as d) {
+    @if (d.unpricedPeriods > 0) {
+      <div class="notice" role="note">
+        {{ d.unpricedPeriods }} perioade de abonament nu au preț, deci nu apar la încasări.
+        @if (isAdmin()) {
+          <a routerLink="/admin/abonamente">Setează prețurile</a>
+        } @else {
+          Cere administratorului să seteze prețurile.
+        }
+      </div>
+    }
+
+    <section class="kpis" aria-label="Indicatori">
+      <div class="card kpi">
+        <span class="label-caps">Încasat · {{ monthLabel() }}</span>
+        <span class="kpi-value display">{{ lei(d.revenue) }}</span>
+        <span class="muted">față de {{ lei(d.revenuePrevious) }} luna trecută</span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">De încasat</span>
+        <span class="kpi-value display" [class.due]="d.outstanding > 0">{{
+          lei(d.outstanding)
+        }}</span>
+        <span class="muted">{{ d.unpaid.length }} perioade neplătite</span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">Abonamente active</span>
+        <span class="kpi-value display">{{ activeTotal() }}</span>
+        <span class="muted">
+          @for (p of d.subscriptions.activeByPlan; track p.planId; let last = $last) {
+            {{ p.count }} {{ p.planName }}{{ last ? '' : ' · ' }}
+          }
+        </span>
+      </div>
+      <div class="card kpi">
+        <span class="label-caps">Vândute în {{ monthLabel() }}</span>
+        <span class="kpi-value display">{{ d.subscriptions.soldThisMonth }}</span>
+        <span class="muted"
+          >{{ d.subscriptions.renewalsThisMonth }} reînnoiri ·
+          {{ d.subscriptions.expiringSoon }} expiră în 7 zile</span
+        >
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="revenue-title">
+        <h2 id="revenue-title" class="section-title">Încasări · ultimele 12 luni</h2>
+        <div
+          class="chart"
+          role="img"
+          [attr.aria-label]="'Încasări lunare, ultima: ' + lei(d.revenue)"
+        >
+          @for (m of chart(); track m.month) {
+            <div class="chart-col">
+              <span class="chart-value">{{ m.amount ? m.amount : '' }}</span>
+              <div
+                class="chart-bar"
+                [class.selected]="m.selected"
+                [style.height.px]="m.height"
+              ></div>
+              <span class="chart-label">{{ m.label }}</span>
+            </div>
+          }
+        </div>
+        <div class="methods">
+          @for (b of d.byMethod; track b.method) {
+            <div class="method">
+              <span class="muted small">{{ methodLabels[b.method] }}</span>
+              <strong>{{ lei(b.amount) }}</strong>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="unpaid-title">
+        <h2 id="unpaid-title" class="section-title">De încasat</h2>
+        <ul class="rows">
+          @for (u of d.unpaid; track u.id) {
+            <li class="row-item">
+              <div class="who">
+                <a class="name" [routerLink]="['/membri', u.memberId]">{{ u.memberName }}</a>
+                <span class="muted small">
+                  {{ u.planName }} · {{ u.startDate | isoDate: 'short' }} –
+                  {{ u.endDate | isoDate: 'short' }} · {{ u.phone }}
+                </span>
+              </div>
+              <strong class="due">{{ lei(u.due ?? 0) }}</strong>
+              <button type="button" class="btn btn-sm" (click)="collecting.set(u)">
+                Încasează
+              </button>
+            </li>
+          } @empty {
+            <li class="state-message">Totul este încasat.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card wide" aria-labelledby="payments-title">
+        <h2 id="payments-title" class="section-title">Plăți în {{ monthLabel() }}</h2>
+        <ul class="rows">
+          @for (p of d.payments; track p.id) {
+            <li class="row-item">
+              <span class="when muted small">{{ p.paidAt | date: 'd MMM, HH:mm' }}</span>
+              <div class="who">
+                <a class="name" [routerLink]="['/membri', p.memberId]">{{ p.memberName }}</a>
+                <span class="muted small">
+                  {{ p.periodLabel ?? 'Altă plată' }} · {{ methodLabels[p.method] }}
+                  @if (p.receivedBy) {
+                    · încasat de {{ p.receivedBy }}
+                  }
+                  @if (p.note) {
+                    · {{ p.note }}
+                  }
+                </span>
+              </div>
+              <strong>{{ lei(p.amount) }}</strong>
+              @if (isAdmin()) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  [attr.aria-label]="'Șterge plata de la ' + p.memberName"
+                  (click)="remove(p)"
+                >
+                  Șterge
+                </button>
+              }
+            </li>
+          } @empty {
+            <li class="state-message">Nicio plată în această lună.</li>
+          }
+        </ul>
+      </section>
+    </div>
+  } @else if (data.loading()) {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>
+
+@if (collecting(); as u) {
+  <app-payment-dialog
+    [memberId]="u.memberId"
+    [memberName]="u.memberName"
+    [period]="u"
+    (saved)="data.reload()"
+    (closed)="collecting.set(null)"
+  />
+}

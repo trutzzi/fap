@@ -149,6 +149,8 @@ export interface CheckInRecord {
 
 export interface MemberDetail extends MemberSummary {
   history: CheckInRecord[];
+  /** Most recent first. */
+  periods: SubscriptionPeriod[];
 }
 
 export interface MemberAttendance {
@@ -176,6 +178,85 @@ export interface NewMemberInput extends MemberInput {
 export interface SubscriptionInput {
   planId: PlanId;
   startDate: string;
+  /** Record a payment for this period right away (optional). */
+  payment?: PaymentInput | null;
+}
+
+// ---- Payments & subscription history --------------------------------------------
+
+export type PaymentMethod = 'cash' | 'card' | 'transfer';
+
+export interface PaymentInput {
+  /** Whole lei. */
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+}
+
+export interface NewPaymentInput extends PaymentInput {
+  memberId: string;
+  /** The subscription period this pays for; `null` for anything else. */
+  periodId: string | null;
+}
+
+export type PeriodPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'no-price';
+
+/** One sold subscription period with what has been paid for it. */
+export interface SubscriptionPeriod {
+  id: string;
+  planId: PlanId;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  price: number | null;
+  paid: number;
+  /** `price - paid`, never negative; `null` without a price. */
+  due: number | null;
+  status: PeriodPaymentStatus;
+  /** The period the member's current subscription refers to. */
+  current: boolean;
+}
+
+export interface Payment {
+  id: string;
+  memberId: string;
+  memberName: string;
+  periodId: string | null;
+  /** "12 ședințe / lună · 1 oct – 31 oct" */
+  periodLabel: string | null;
+  amount: number;
+  method: PaymentMethod;
+  paidAt: string;
+  receivedBy: string | null;
+  note: string;
+}
+
+export interface UnpaidPeriod extends SubscriptionPeriod {
+  memberId: string;
+  memberName: string;
+  phone: string;
+}
+
+export interface FinanceSummary {
+  /** `YYYY-MM` */
+  month: string;
+  revenue: number;
+  revenuePrevious: number;
+  byMethod: { method: PaymentMethod; amount: number }[];
+  /** Last 12 months, oldest first. */
+  monthly: { month: string; amount: number }[];
+  /** Sum still due on periods that have started. */
+  outstanding: number;
+  unpaid: UnpaidPeriod[];
+  /** Periods without a price (plan prices not set yet). */
+  unpricedPeriods: number;
+  subscriptions: {
+    activeByPlan: { planId: PlanId; planName: string; count: number }[];
+    soldThisMonth: number;
+    renewalsThisMonth: number;
+    expiringSoon: number;
+  };
+  payments: Payment[];
 }
 
 export interface RfidInput {

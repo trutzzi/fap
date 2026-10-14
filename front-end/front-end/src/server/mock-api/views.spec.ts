@@ -51,6 +51,8 @@ function createDb(): Db {
     members: [],
     checkins: [],
     refusedScans: [],
+    periods: [],
+    payments: [],
   };
 }
 

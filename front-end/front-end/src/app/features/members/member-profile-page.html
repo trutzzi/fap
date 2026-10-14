@@ -178,6 +178,40 @@
         </div>
       </section>
 
+      <section class="card periods" aria-labelledby="periods-title">
+        <h2 id="periods-title" class="section-title">Abonamente și plăți</h2>
+        <ul class="period-list">
+          @for (p of m.periods; track p.id) {
+            <li class="period" [class.current]="p.current">
+              <div class="period-main">
+                <strong>{{ p.planName }}</strong>
+                <span class="muted small">
+                  {{ p.startDate | isoDate: 'short' }} – {{ p.endDate | isoDate }}
+                  @if (p.current) {
+                    · curent
+                  }
+                </span>
+              </div>
+              <span class="period-amount">
+                @if (p.price === null) {
+                  <span class="muted">[PREȚ]</span>
+                } @else {
+                  {{ p.paid }} / {{ p.price }} lei
+                }
+              </span>
+              <span class="badge" [class]="periodBadge[p.status].tone">{{
+                periodBadge[p.status].label
+              }}</span>
+              @if (p.status !== 'paid') {
+                <button type="button" class="btn btn-sm" (click)="collect(p)">Încasează</button>
+              }
+            </li>
+          } @empty {
+            <li class="state-message">Niciun abonament vândut încă.</li>
+          }
+        </ul>
+      </section>
+
       <section class="card history" aria-labelledby="history-title">
         <h2 id="history-title" class="section-title">Istoric check-in</h2>
         <ul>
@@ -207,6 +241,15 @@
     @switch (dialog()) {
       @case ('edit') {
         <app-member-form-dialog [member]="m" (saved)="refresh()" (closed)="dialog.set(null)" />
+      }
+      @case ('payment') {
+        <app-payment-dialog
+          [memberId]="m.id"
+          [memberName]="m.fullName"
+          [period]="paying()"
+          (saved)="refresh()"
+          (closed)="dialog.set(null)"
+        />
       }
       @case ('photo') {
         <app-photo-dialog [member]="m" (saved)="refresh()" (closed)="dialog.set(null)" />

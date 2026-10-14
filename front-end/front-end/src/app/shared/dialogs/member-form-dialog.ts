@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { catchError, finalize, of, switchMap } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
 import { MemberSummary, PlanId } from '../../core/api/models';
@@ -17,6 +17,7 @@ import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { toIsoDate } from '../../core/util/dates';
 import { Modal } from '../ui/modal';
+import { PhotoPicker } from '../ui/photo-picker';
 
 export const PHONE_PATTERN = /^[0-9 +().-]{6,20}$/;
 export const RFID_PATTERN = /^[0-9a-fA-F·:\s-]{4,30}$/;
@@ -24,7 +25,7 @@ export const RFID_PATTERN = /^[0-9a-fA-F·:\s-]{4,30}$/;
 /** Create a member (with an optional first subscription) or edit an existing one. */
 @Component({
   selector: 'app-member-form-dialog',
-  imports: [Modal, ReactiveFormsModule],
+  imports: [Modal, ReactiveFormsModule, PhotoPicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './member-form-dialog.html',
 })
@@ -47,6 +48,8 @@ export class MemberFormDialog implements OnInit {
     () => null,
     () => this.academy.plans(),
   );
+  /** Photo taken while creating a member (uploaded after the member is saved). */
+  protected readonly photo = signal<Blob | null>(null);
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -116,16 +119,35 @@ export class MemberFormDialog implements OnInit {
 
     this.saving.set(true);
     this.error.set(null);
-    request.pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (member) => {
-        this.toast.success(
-          existing ? 'Modificările au fost salvate.' : `${member.fullName} a fost adăugat.`,
-        );
-        this.saved.emit(member);
-        this.modal().close();
-      },
-      error: (err) => this.error.set(errorMessage(err)),
-    });
+    const photo = existing ? null : this.photo();
+    request
+      .pipe(
+        // New member with a photo: upload it once the member exists. A failed upload keeps
+        // the member and says so (the photo can be added from the profile).
+        switchMap((member) =>
+          photo && this.form.controls.photoConsent.value
+            ? this.members.uploadPhoto(member.id, photo).pipe(
+                catchError(() => {
+                  this.toast.error(
+                    'Fotografia nu s-a salvat. O poți adăuga din profilul membrului.',
+                  );
+                  return of(member);
+                }),
+              )
+            : of(member),
+        ),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe({
+        next: (member) => {
+          this.toast.success(
+            existing ? 'Modificările au fost salvate.' : `${member.fullName} a fost adăugat.`,
+          );
+          this.saved.emit(member);
+          this.modal().close();
+        },
+        error: (err) => this.error.set(errorMessage(err)),
+      });
   }
 
   protected cancel(): void {

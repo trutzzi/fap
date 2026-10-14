@@ -3,18 +3,21 @@ import {
   Component,
   OnInit,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
-import { MemberSummary, PlanId } from '../../core/api/models';
+import { PAYMENT_METHODS } from '../../core/api/finance.service';
+import { MemberSummary, PaymentMethod, PlanId } from '../../core/api/models';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { addDays, addMonths, isIsoDate, toIsoDate } from '../../core/util/dates';
@@ -63,6 +66,42 @@ import { Modal } from '../ui/modal';
             <span class="field-hint">Valabil până la {{ end | isoDate }} inclusiv.</span>
           }
         </div>
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" formControlName="payNow" />
+            Plată încasată acum
+          </label>
+        </div>
+        @if (form.controls.payNow.value) {
+          <div class="form-grid">
+            <div class="field">
+              <label for="subscription-amount">Sumă (lei)</label>
+              <input
+                id="subscription-amount"
+                class="input"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                formControlName="amount"
+              />
+              @if (form.controls.amount.invalid) {
+                <span class="field-hint">Introdu suma încasată în lei.</span>
+              }
+            </div>
+            <fieldset class="field">
+              <legend>Metodă</legend>
+              <div class="checks">
+                @for (m of methods; track m.value) {
+                  <label class="check">
+                    <input type="radio" formControlName="method" [value]="m.value" />
+                    {{ m.label }}
+                  </label>
+                }
+              </div>
+            </fieldset>
+          </div>
+        }
         <div class="form-footer">
           <button type="button" class="btn btn-ghost" (click)="modal().close()">Anulează</button>
           <button type="submit" class="btn btn-primary" [disabled]="saving() || form.invalid">
@@ -93,11 +132,18 @@ export class SubscriptionDialog implements OnInit {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  protected readonly methods = PAYMENT_METHODS;
   protected readonly form = inject(NonNullableFormBuilder).group({
     planId: ['sessions12' as PlanId, Validators.required],
     startDate: [toIsoDate(new Date()), Validators.required],
+    payNow: [false],
+    amount: [null as number | null, [Validators.min(1), Validators.max(100_000)]],
+    method: ['cash' as PaymentMethod],
   });
 
+  private readonly planId = toSignal(this.form.controls.planId.valueChanges, {
+    initialValue: this.form.controls.planId.value,
+  });
   private readonly startDate = toSignal(this.form.controls.startDate.valueChanges, {
     initialValue: this.form.controls.startDate.value,
   });
@@ -106,12 +152,32 @@ export class SubscriptionDialog implements OnInit {
     return isIsoDate(start) ? addDays(addMonths(start, 1), -1) : null;
   });
 
+  constructor() {
+    // Pre-fill the amount with the chosen plan's price (when one is set).
+    effect(() => {
+      const plans = this.plans.value();
+      const planId = this.planId();
+      const price = plans?.find((p) => p.id === planId)?.price ?? null;
+      untracked(() => this.form.controls.amount.setValue(price));
+    });
+    // The amount is only required when the payment is recorded now.
+    this.form.controls.payNow.valueChanges.pipe(takeUntilDestroyed()).subscribe((pay) => {
+      const amount = this.form.controls.amount;
+      amount.setValidators(
+        pay ? [Validators.required, Validators.min(1), Validators.max(100_000)] : [],
+      );
+      amount.updateValueAndValidity();
+    });
+  }
+
   ngOnInit(): void {
     const sub = this.member().subscription;
     const keepPeriod = this.mode() === 'change' && sub;
-    this.form.setValue({
+    this.form.patchValue({
       planId: this.plan() ?? sub?.planId ?? 'sessions12',
       startDate: keepPeriod ? sub.startDate : toIsoDate(new Date()),
+      // A new period is usually paid at the desk; a plan change usually isn't.
+      payNow: this.mode() === 'renew',
     });
   }
 
@@ -119,8 +185,13 @@ export class SubscriptionDialog implements OnInit {
     if (this.form.invalid || this.saving()) return;
     this.saving.set(true);
     this.error.set(null);
+    const { planId, startDate, payNow, amount, method } = this.form.getRawValue();
     this.members
-      .setSubscription(this.member().id, this.form.getRawValue())
+      .setSubscription(this.member().id, {
+        planId,
+        startDate,
+        payment: payNow && amount ? { amount: Math.round(amount), method } : null,
+      })
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (member) => {

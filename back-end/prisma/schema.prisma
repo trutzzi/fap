@@ -33,19 +33,21 @@ enum Role {
 
 /// Staff account. Created with `npm run user:create`.
 model User {
-  id             String    @id @default(cuid())
+  id               String               @id @default(cuid())
   /// Stored lowercase.
-  email          String    @unique
-  name           String
+  email            String               @unique
+  name             String
   /// `scrypt$N$r$p$salt$hash`, see src/lib/password.ts.
-  passwordHash   String    @map("password_hash")
-  role           Role
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz
-  sessions       Session[]
+  passwordHash     String               @map("password_hash")
+  role             Role
+  active           Boolean              @default(true)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  lastLoginAt      DateTime?            @map("last_login_at") @db.Timestamptz
+  sessions         Session[]
+  soldPeriods      SubscriptionPeriod[]
+  receivedPayments Payment[]
   /// Courses this user coaches (role `coach`).
-  coachedCourses Course[]
+  coachedCourses   Course[]
 
   @@map("users")
 }
@@ -79,14 +81,15 @@ model Club {
 }
 
 model Plan {
-  id            PlanId         @id
+  id            PlanId               @id
   name          String
   description   String
   /// Null means unlimited sessions.
-  sessionLimit  Int?           @map("session_limit")
+  sessionLimit  Int?                 @map("session_limit")
   /// Monthly price in lei; null until configured.
   price         Int?
   subscriptions Subscription[]
+  periods       SubscriptionPeriod[]
 
   @@map("plans")
 }
@@ -129,22 +132,24 @@ model TrainingSlot {
 }
 
 model Member {
-  id           String         @id @default(cuid())
-  firstName    String         @map("first_name")
-  lastName     String         @map("last_name")
+  id           String               @id @default(cuid())
+  firstName    String               @map("first_name")
+  lastName     String               @map("last_name")
   phone        String
-  email        String         @default("")
+  email        String               @default("")
   /// Normalized card code: uppercase hex, no separators.
-  rfid         String?        @unique
-  joinedAt     DateTime       @map("joined_at") @db.Date
+  rfid         String?              @unique
+  joinedAt     DateTime             @map("joined_at") @db.Date
   /// GDPR consent to store a photo (for minors: a parent's consent). Required for `photo`.
-  photoConsent Boolean        @default(false) @map("photo_consent")
-  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  photoConsent Boolean              @default(false) @map("photo_consent")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   courses      MemberCourse[]
   subscription Subscription?
   checkIns     CheckIn[]
   photo        MemberPhoto?
+  periods      SubscriptionPeriod[]
+  payments     Payment[]
   refusedScans RefusedScan[]
 
   @@index([lastName, firstName])
@@ -229,4 +234,54 @@ model RefusedScan {
   @@index([date])
   @@index([memberId, date])
   @@map("refused_scans")
+}
+
+enum PaymentMethod {
+  cash
+  card
+  transfer
+}
+
+/// Every subscription period sold (history). `Subscription` stays the member's current one;
+/// changing plan within the same period updates the row with the same start date.
+model SubscriptionPeriod {
+  id          String    @id @default(cuid())
+  memberId    String    @map("member_id")
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId      PlanId    @map("plan_id")
+  plan        Plan      @relation(fields: [planId], references: [id])
+  startDate   DateTime  @map("start_date") @db.Date
+  endDate     DateTime  @map("end_date") @db.Date
+  /// Agreed price in lei (the plan price when sold); null while prices are not set.
+  price       Int?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdById String?   @map("created_by_id")
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  payments    Payment[]
+
+  @@unique([memberId, startDate])
+  @@index([startDate])
+  @@map("subscription_periods")
+}
+
+model Payment {
+  id           String              @id @default(cuid())
+  memberId     String              @map("member_id")
+  member       Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  periodId     String?             @map("period_id")
+  period       SubscriptionPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  /// Whole lei.
+  amount       Int
+  method       PaymentMethod
+  paidAt       DateTime            @default(now()) @map("paid_at") @db.Timestamptz
+  /// Local date in the club timezone, for monthly totals.
+  date         DateTime            @db.Date
+  receivedById String?             @map("received_by_id")
+  receivedBy   User?               @relation(fields: [receivedById], references: [id], onDelete: SetNull)
+  note         String              @default("")
+
+  @@index([date])
+  @@index([memberId])
+  @@index([periodId])
+  @@map("payments")
 }

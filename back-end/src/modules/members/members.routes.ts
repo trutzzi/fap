@@ -7,7 +7,7 @@ import type {
 } from '../../contract/models.js';
 import { fromDbDate, toDbDate, type Db } from '../../db.js';
 import type { Deps } from '../../deps.js';
-import { isActive, matchesSearch, normalizeRfid, periodEnd } from '../../domain/membership.js';
+import { isActive, matchesSearch, normalizeRfid } from '../../domain/membership.js';
 import { today } from '../../lib/clock.js';
 import { addMonthsToMonth, toMonth } from '../../lib/dates.js';
 import { badRequest, conflict, notFound } from '../../lib/http-error.js';
@@ -21,6 +21,7 @@ import {
   subscriptionSchema,
 } from '../../lib/validation.js';
 import { assertAdmin } from '../auth/auth.middleware.js';
+import { periodInclude, sellSubscription, toPeriod } from '../finance/periods.js';
 import { checkInHistory, loadSummaries, loadSummary } from './member-queries.js';
 
 const FILTERS: Record<MemberFilter, (m: MemberSummary) => boolean> = {
@@ -106,23 +107,35 @@ export function membersRouter({ db, clock }: Deps): Router {
         photoConsent: input.photoConsent,
         joinedAt: toDbDate(today(clock)),
         courses: { create: input.courseIds.map((courseId) => ({ courseId })) },
-        subscription: input.subscription
-          ? {
-              create: {
-                planId: input.subscription.planId,
-                startDate: toDbDate(input.subscription.startDate),
-                endDate: toDbDate(periodEnd(input.subscription.startDate)),
-              },
-            }
-          : undefined,
       },
     });
+    if (input.subscription) {
+      const sub = input.subscription;
+      await db.$transaction((tx) =>
+        sellSubscription(tx, {
+          memberId: member.id,
+          ...sub,
+          userId: req.user?.id ?? null,
+          now: clock(),
+        }),
+      );
+    }
     res.status(201).json(await summaryOrThrow(member.id));
   });
 
   router.get('/:id', async (req, res) => {
     const member = await summaryOrThrow(req.params.id);
-    res.json({ ...member, history: await checkInHistory(db, member, 20) });
+    const periods = await db.subscriptionPeriod.findMany({
+      where: { memberId: member.id },
+      include: periodInclude,
+      orderBy: { startDate: 'desc' },
+      take: 12,
+    });
+    res.json({
+      ...member,
+      history: await checkInHistory(db, member, 20),
+      periods: periods.map((p) => toPeriod(p, member.subscription?.startDate ?? null)),
+    });
   });
 
   router.put('/:id', async (req, res) => {
@@ -161,17 +174,10 @@ export function membersRouter({ db, clock }: Deps): Router {
   router.put('/:id/subscription', async (req, res) => {
     const id = req.params.id;
     await summaryOrThrow(id);
-    const { planId, startDate } = parse(subscriptionSchema, req.body);
-    const period = {
-      planId,
-      startDate: toDbDate(startDate),
-      endDate: toDbDate(periodEnd(startDate)),
-    };
-    await db.subscription.upsert({
-      where: { memberId: id },
-      create: { memberId: id, ...period },
-      update: period,
-    });
+    const input = parse(subscriptionSchema, req.body);
+    await db.$transaction((tx) =>
+      sellSubscription(tx, { memberId: id, ...input, userId: req.user?.id ?? null, now: clock() }),
+    );
     res.json(await summaryOrThrow(id));
   });
 

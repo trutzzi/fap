@@ -6,12 +6,15 @@ import {
   MemberFilter,
   MemberInput,
   NewMemberInput,
+  PaymentInput,
+  PaymentMethod,
   PlanId,
   SubscriptionInput,
   TrainingSlotInput,
 } from '../../app/core/api/models';
 import { isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
 import { DEMO_USERS, MockSessions } from './auth';
+import { MockFinance } from './finance';
 import { Db, MemberEntity, nextId, normalizeRfid } from './db';
 import { seed } from './seed';
 import { Views } from './views';
@@ -50,11 +53,31 @@ function isPlanId(value: unknown): value is PlanId {
   return value === 'sessions12' || value === 'unlimited';
 }
 
+function parsePayment(value: unknown): PaymentInput {
+  const b = (value ?? {}) as Body;
+  const amount = b['amount'];
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > 100_000) {
+    throw badRequest('Suma trebuie să fie de cel puțin 1 leu.');
+  }
+  if (!['cash', 'card', 'transfer'].includes(b['method'] as string)) {
+    throw badRequest('Metoda de plată este invalidă.');
+  }
+  return {
+    amount,
+    method: b['method'] as PaymentMethod,
+    note: typeof b['note'] === 'string' ? b['note'].slice(0, 200) : '',
+  };
+}
+
 function parseSubscription(body: unknown): SubscriptionInput {
   const b = (body ?? {}) as Body;
   if (!isPlanId(b['planId'])) throw badRequest('Tipul de abonament este invalid.');
   if (!isIsoDate(b['startDate'])) throw badRequest('Data de început este invalidă.');
-  return { planId: b['planId'], startDate: b['startDate'] };
+  return {
+    planId: b['planId'],
+    startDate: b['startDate'],
+    payment: b['payment'] ? parsePayment(b['payment']) : null,
+  };
 }
 
 const MEMBER_FILTERS: MemberFilter[] = ['all', 'active', 'expiring', 'limit', 'expired', 'no-card'];
@@ -67,6 +90,7 @@ const MEMBER_FILTERS: MemberFilter[] = ['all', 'active', 'expiring', 'limit', 'e
  */
 export function createMockApi(db: Db = seed()): express.Router {
   const views = new Views(db);
+  const finance = new MockFinance(db, views);
   const sessions = new MockSessions();
   let club: Club = {
     name: 'Fight Academy Pitești',
@@ -409,15 +433,43 @@ export function createMockApi(db: Db = seed()): express.Router {
       id: nextId('mem'),
       ...input,
       joinedAt: toIsoDate(new Date()),
-      subscription: sub ? parseSubscription(sub) : null,
+      subscription: null,
       photo: null,
     };
     db.members.push(member);
+    if (sub) finance.sell(member.id, parseSubscription(sub), sessions.user(req)!.name);
     res.status(201).json(views.summary(member));
   });
 
   api.get('/members/:id', (req, res) => {
-    res.json(views.memberDetail(findMember(req.params['id'])));
+    const member = findMember(req.params['id']);
+    res.json({ ...views.memberDetail(member), periods: finance.periodsOf(member.id) });
+  });
+
+  // ---- Finance (staff only: coaches are not in the allowlist) ----
+
+  api.get('/finance', (req, res) => {
+    const month = req.query['month'];
+    const valid = typeof month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+    res.json(finance.summary(valid ? month : toIsoDate(new Date()).slice(0, 7)));
+  });
+
+  api.post('/payments', (req, res) => {
+    const b = (req.body ?? {}) as Body;
+    const member = findMember(String(b['memberId'] ?? ''));
+    const periodId = typeof b['periodId'] === 'string' && b['periodId'] ? b['periodId'] : null;
+    if (periodId && !db.periods.some((p) => p.id === periodId && p.memberId === member.id)) {
+      throw badRequest('Perioada de abonament nu aparține acestui membru.');
+    }
+    res
+      .status(201)
+      .json(finance.pay(member.id, periodId, parsePayment(b), sessions.user(req)!.name));
+  });
+
+  api.delete('/payments/:id', (req, res) => {
+    assertAdmin(req);
+    db.payments = db.payments.filter((p) => p.id !== req.params['id']);
+    res.status(204).end();
   });
 
   api.put('/members/:id', (req, res) => {
@@ -437,7 +489,7 @@ export function createMockApi(db: Db = seed()): express.Router {
 
   api.put('/members/:id/subscription', (req, res) => {
     const member = findMember(req.params['id']);
-    member.subscription = parseSubscription(req.body);
+    finance.sell(member.id, parseSubscription(req.body), sessions.user(req)!.name);
     res.json(views.summary(member));
   });
 

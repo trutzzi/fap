@@ -12,6 +12,7 @@ import {
   CourseEntity,
   Db,
   MemberEntity,
+  PeriodEntity,
   PlanEntity,
   SlotEntity,
   nextId,
@@ -380,6 +381,25 @@ export function seed(now = new Date()): Db {
     addCheckins(member, spread(current, Math.min(target, limit)));
   }
 
+  // Subscription history like the back-end seed: current period, plus the previous one for
+  // long-standing members. Plan prices are not set ([PREȚ]), so no payments are invented.
+  const periods: PeriodEntity[] = [];
+  for (const m of members) {
+    if (!m.subscription) continue;
+    const current = m.subscription.startDate;
+    const previous = addMonths(current, -1);
+    for (const start of m.joinedAt <= previous ? [previous, current] : [current]) {
+      periods.push({
+        id: nextId('per'),
+        memberId: m.id,
+        planId: m.subscription.planId,
+        startDate: start,
+        endDate: addDays(addMonths(start, 1), -1),
+        price: null,
+      });
+    }
+  }
+
   return {
     plans: PLANS.map((p) => ({ ...p })),
     courses,
@@ -387,5 +407,7 @@ export function seed(now = new Date()): Db {
     members,
     checkins,
     refusedScans: [],
+    periods,
+    payments: [],
   };
 }

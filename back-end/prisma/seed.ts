@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { loadConfig } from '../src/config.js';
 import { createDb, toDbDate } from '../src/db.js';
 import { periodEnd } from '../src/domain/membership.js';
+import { addMonths } from '../src/lib/dates.js';
 import { hashPassword } from '../src/lib/password.js';
 import { seed } from './seed/generate.js';
 
@@ -73,13 +74,15 @@ await db.$transaction([
   db.refusedScan.deleteMany(),
   db.memberPhoto.deleteMany(),
   db.checkIn.deleteMany(),
+  db.payment.deleteMany(),
+  db.subscriptionPeriod.deleteMany(),
   db.subscription.deleteMany(),
   db.memberCourse.deleteMany(),
   db.member.deleteMany(),
   db.trainingSlot.deleteMany(),
   db.course.deleteMany(),
-  db.plan.deleteMany(),
-  db.plan.createMany({ data: data.plans }),
+  // Plans are kept (with any prices an admin set); only missing ones are created.
+  db.plan.createMany({ data: data.plans, skipDuplicates: true }),
   db.course.createMany({ data: data.courses }),
   db.trainingSlot.createMany({ data: data.slots }),
   db.member.createMany({
@@ -120,6 +123,48 @@ await db.$transaction([
     })),
   }),
 ]);
+
+// Subscription history and payments. Amounts come only from real plan prices: while prices
+// are not set ([PREȚ]) periods are recorded without a price and no payments are invented.
+const prices = new Map((await db.plan.findMany()).map((p) => [p.id, p.price]));
+const METHODS = ['cash', 'card', 'transfer'] as const;
+const periods = [];
+const payments = [];
+for (const [i, m] of data.members.entries()) {
+  if (!m.subscription) continue;
+  const price = prices.get(m.subscription.planId) ?? null;
+  const current = m.subscription.startDate;
+  const previous = addMonths(current, -1);
+  const starts = m.joinedAt <= previous ? [previous, current] : [current];
+  for (const start of starts) {
+    const id = `per_${m.id}_${start}`;
+    periods.push({
+      id,
+      memberId: m.id,
+      planId: m.subscription.planId,
+      startDate: toDbDate(start),
+      endDate: toDbDate(periodEnd(start)),
+      price,
+    });
+    // Previous periods are paid; ~1 in 6 current periods is still unpaid.
+    const paid = start !== current || i % 6 !== 5;
+    if (price !== null && paid) {
+      const paidOn = new Date(`${start}T10:00:00`);
+      paidOn.setMinutes(paidOn.getMinutes() + (i % 7) * 37);
+      payments.push({
+        memberId: m.id,
+        periodId: id,
+        amount: price,
+        method: METHODS[i % 3],
+        paidAt: paidOn,
+        date: toDbDate(start),
+      });
+    }
+  }
+}
+await db.subscriptionPeriod.createMany({ data: periods });
+await db.payment.createMany({ data: payments });
+console.log(`Seeded ${periods.length} subscription periods and ${payments.length} payments.`);
 
 for (const { password, ...user } of DEMO_USERS) {
   if (await db.user.findUnique({ where: { email: user.email } })) continue;

@@ -235,3 +235,37 @@ dd {
   font-weight: 700;
   color: var(--text-strong);
 }
+
+.periods {
+  grid-column: 1 / -1;
+}
+.period-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.period.current {
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+}
+.period-main {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+}
+.period-amount {
+  font-weight: 600;
+  color: var(--text-strong);
+}

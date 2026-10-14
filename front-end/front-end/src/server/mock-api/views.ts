@@ -183,7 +183,7 @@ export class Views {
     return records.reverse().slice(0, limit);
   }
 
-  memberDetail(member: MemberEntity): MemberDetail {
+  memberDetail(member: MemberEntity): Omit<MemberDetail, 'periods'> {
     return { ...this.summary(member), history: this.history(member, 20) };
   }
 

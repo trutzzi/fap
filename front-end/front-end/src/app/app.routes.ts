@@ -57,9 +57,9 @@ export const routes: Routes = [
       {
         path: 'plati',
         canActivate: [staffGuard],
-        title: 'Plăți · FightAcademy',
-        data: { heading: 'Plăți' },
-        loadComponent: () => import('./features/placeholder-page').then((m) => m.PlaceholderPage),
+        title: 'Plăți & abonamente · FightAcademy',
+        loadComponent: () =>
+          import('./features/payments/payments-page').then((m) => m.PaymentsPage),
       },
       {
         path: 'admin',

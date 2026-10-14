@@ -22,8 +22,35 @@ const isoDate = (label: string) =>
 
 export const planIdSchema = z.enum(['sessions12', 'unlimited'], 'Tipul de abonament este invalid.');
 
+export const paymentMethodSchema = z.enum(
+  ['cash', 'card', 'transfer'],
+  'Metoda de plată este invalidă.',
+);
+
+export const paymentInputSchema = z.object({
+  amount: z
+    .number('Suma este invalidă.')
+    .int('Suma trebuie să fie în lei întregi.')
+    .min(1, 'Suma trebuie să fie de cel puțin 1 leu.')
+    .max(100_000, 'Suma este prea mare.'),
+  method: paymentMethodSchema,
+  note: z.string().trim().max(200, 'Nota poate avea maximum 200 de caractere.').default(''),
+});
+
+export const newPaymentSchema = paymentInputSchema.extend({
+  memberId: z.string('Membrul este invalid.').min(1, 'Membrul este invalid.'),
+  periodId: z
+    .string()
+    .nullish()
+    .transform((v) => v || null),
+});
+
 export const subscriptionSchema = z.object(
-  { planId: planIdSchema, startDate: isoDate('Data de început') },
+  {
+    planId: planIdSchema,
+    startDate: isoDate('Data de început'),
+    payment: paymentInputSchema.nullish().transform((v) => v ?? null),
+  },
   'Abonamentul este invalid.',
 );
 

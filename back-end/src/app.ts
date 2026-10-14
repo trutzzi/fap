@@ -15,6 +15,7 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { checkInsRouter } from './modules/check-ins/check-ins.routes.js';
 import { clubRouter } from './modules/club/club.routes.js';
+import { financeRouter } from './modules/finance/finance.routes.js';
 import { insightsRouter } from './modules/insights/insights.routes.js';
 import { membersRouter } from './modules/members/members.routes.js';
 import { memberPhotosRouter } from './modules/members/photos.routes.js';
@@ -58,6 +59,7 @@ export function createApp({
   api.use('/members', membersRouter(deps));
   api.use(catalogRouter(deps));
   api.use(insightsRouter(deps));
+  api.use(financeRouter(deps));
   api.use(checkInsRouter(deps));
   api.use((_req, _res, next) => next(new HttpError(404, 'Resursa nu există.')));
   app.use('/api', api);

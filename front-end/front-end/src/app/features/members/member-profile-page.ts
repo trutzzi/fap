@@ -13,7 +13,12 @@ import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
-import { CheckInRecord, PlanId } from '../../core/api/models';
+import {
+  CheckInRecord,
+  PeriodPaymentStatus,
+  PlanId,
+  SubscriptionPeriod,
+} from '../../core/api/models';
 import { AuthService } from '../../core/auth/auth.service';
 import { checkInMessage } from '../../core/checkin-messages';
 import { createQuery, errorMessage } from '../../core/data/query';
@@ -31,6 +36,7 @@ import {
 import { ConfirmDialog } from '../../shared/dialogs/confirm-dialog';
 import { MemberFormDialog } from '../../shared/dialogs/member-form-dialog';
 import { PhotoDialog } from '../../shared/dialogs/photo-dialog';
+import { PaymentDialog } from '../../shared/dialogs/payment-dialog';
 import { RfidDialog } from '../../shared/dialogs/rfid-dialog';
 import { SubscriptionDialog } from '../../shared/dialogs/subscription-dialog';
 import { IsoDatePipe, RfidPipe } from '../../shared/ui/formatting';
@@ -39,7 +45,14 @@ import { MemberAvatar } from '../../shared/ui/member-avatar';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
-type ProfileDialog = 'edit' | 'photo' | 'rfid' | 'renew' | 'change' | 'delete';
+type ProfileDialog = 'edit' | 'photo' | 'payment' | 'rfid' | 'renew' | 'change' | 'delete';
+
+const PERIOD_BADGE: Record<PeriodPaymentStatus, { label: string; tone: string }> = {
+  paid: { label: 'Plătit', tone: 'badge--success' },
+  partial: { label: 'Parțial', tone: 'badge--warning' },
+  unpaid: { label: 'Neplătit', tone: 'badge--danger' },
+  'no-price': { label: 'Fără preț', tone: 'badge--muted' },
+};
 
 interface CalendarCell {
   day: number | null;
@@ -63,6 +76,7 @@ interface CalendarCell {
     RfidDialog,
     ConfirmDialog,
     PhotoDialog,
+    PaymentDialog,
     MemberAvatar,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,6 +103,8 @@ export class MemberProfilePage {
   });
   protected readonly dialog = signal<ProfileDialog | null>(null);
   protected readonly upgradePlan = signal<PlanId | null>(null);
+  protected readonly paying = signal<SubscriptionPeriod | null>(null);
+  protected readonly periodBadge = PERIOD_BADGE;
 
   protected readonly member = createQuery(
     () => this.id(),
@@ -175,6 +191,11 @@ export class MemberProfilePage {
       },
       error: (err) => this.toast.error(errorMessage(err)),
     });
+  }
+
+  protected collect(period: SubscriptionPeriod): void {
+    this.paying.set(period);
+    this.dialog.set('payment');
   }
 
   protected refresh(): void {

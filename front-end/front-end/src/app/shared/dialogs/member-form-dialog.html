@@ -116,6 +116,14 @@
       }
     </div>
 
+    <!-- New members: take the photo right away on the reception tablet (changeable later). -->
+    @if (!member() && form.controls.photoConsent.value) {
+      <fieldset class="field">
+        <legend>Fotografie (opțional)</legend>
+        <app-photo-picker [size]="220" (photo)="photo.set($event)" />
+      </fieldset>
+    }
+
     @if (!member()) {
       <div class="form-grid">
         <div class="field">
