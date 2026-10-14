@@ -39,7 +39,9 @@ npm run db:migrate   # back-end Prisma migrations; also db:seed, db:studio
 - Missing business facts (for example plan prices) appear as placeholders like `[PREȚ]`, never as invented values.
 - Prettier is shared: 100-character lines, single quotes.
 
-## Environment
+## Environment and deployment
 
+- The git repository is the root folder (`github.com/trutzzi/fap`, branch `main`). The root-owned `front-end/front-end/.git-angular-cli-unused` is an empty leftover from `ng new`; it is ignored, and the user can delete it with sudo.
 - PostgreSQL 16 runs locally via Homebrew. The back-end `.env` points at the `fight_academy` and `fight_academy_test` databases.
-- In `front-end/front-end`, `.git`, `node_modules` and `package-lock.json` are owned by `root`. Git reports "dubious ownership" and `npm install` there fails until ownership is fixed (`sudo chown -R $(whoami) front-end/front-end`, run by the user). Only `front-end/front-end` is a git repository; the root and `back-end/` are not under version control yet.
+- `front-end/front-end/node_modules` and its `package-lock.json` are owned by `root`, so `npm install` there fails until the user runs `sudo chown -R $(whoami) front-end/front-end`. That blocks adding front-end ESLint.
+- **Production:** https://fap.valentintruta.ro, deployed by the `images` and `deploy` jobs in `.github/workflows/ci.yml` on every push to `main`. The stack (`deploy/docker-compose.yml`, in `~/fap` on the server as user `deploy`) shares the server with other apps: the albumflow Caddy container proxies to it over the `albumflow_default` network (block in `deploy/Caddyfile.fap`). Don't publish ports, and don't touch the other stacks. See the README's Deployment section.
