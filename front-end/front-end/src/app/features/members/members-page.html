@@ -1,0 +1,169 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      @if (members.value(); as r) {
+        <p class="eyebrow">{{ r.activeCount }} activi · {{ r.inactiveCount }} inactivi</p>
+      }
+      <h1 class="page-title">Membri</h1>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="creating.set(true)">+ Membru nou</button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search">
+      <app-icon name="search" [size]="18" />
+      <span class="visually-hidden">Caută membru</span>
+      <input
+        #search
+        type="search"
+        class="input"
+        placeholder="Caută după nume, telefon sau card RFID"
+        [value]="term()"
+        (input)="term.set(search.value)"
+      />
+    </label>
+    <div class="chips" role="group" aria-label="Filtrează după status">
+      @for (f of filters; track f.value) {
+        <button
+          type="button"
+          class="chip"
+          [attr.aria-pressed]="activeFilter() === f.value"
+          (click)="setFilter(f.value)"
+        >
+          {{ f.label }}
+        </button>
+      }
+    </div>
+    <label class="course-select">
+      <span class="visually-hidden">Filtrează după curs</span>
+      <select
+        #courseSelect
+        class="input"
+        [value]="course() ?? ''"
+        (change)="setCourse(courseSelect.value)"
+      >
+        <option value="">Curs: Toate</option>
+        @for (c of courses.value() ?? []; track c.id) {
+          <option [value]="c.id" [selected]="c.id === course()">{{ c.name }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="table-wrap" [class.loading]="members.loading()">
+    <table>
+      <caption class="visually-hidden">
+        Lista membrilor
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Membru</th>
+          <th scope="col">Cursuri</th>
+          <th scope="col">Abonament</th>
+          <th scope="col">Utilizare</th>
+          <th scope="col">Valabil până la</th>
+          <th scope="col">Card RFID</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of members.value()?.items ?? []; track m.id) {
+          <tr>
+            <td>
+              <a class="member" [routerLink]="['/membri', m.id]">
+                <app-member-avatar [initials]="m.initials" [photoUrl]="m.photoUrl" [size]="36" />
+                <span>
+                  <span class="name">{{ m.fullName }}</span>
+                  <span class="muted small">{{ m.phone }}</span>
+                </span>
+              </a>
+            </td>
+            <td>
+              <div class="tags">
+                @for (c of m.courses; track c.id) {
+                  <span class="tag" [style.color]="c.color">{{ c.name }}</span>
+                }
+              </div>
+            </td>
+            <td class="strong">{{ m.subscription?.planName ?? '—' }}</td>
+            <td>
+              @if (m.subscription; as s) {
+                @if (s.sessionLimit !== null) {
+                  <div class="usage">
+                    <app-session-meter
+                      class="meter"
+                      [used]="s.used"
+                      [limit]="s.sessionLimit"
+                      [height]="14"
+                      [tone]="s.remaining === 0 ? 'var(--danger)' : 'var(--text)'"
+                    />
+                    <span
+                      class="usage-count"
+                      [class.warn]="(s.remaining ?? 0) <= 2"
+                      [class.full]="s.remaining === 0"
+                    >
+                      {{ s.used }}/{{ s.sessionLimit }}
+                    </span>
+                  </div>
+                } @else {
+                  <span
+                    ><strong>{{ s.used }}</strong> prezențe · fără limită</span
+                  >
+                }
+              } @else {
+                <span class="muted">—</span>
+              }
+            </td>
+            <td [class.muted]="m.status === 'expired'" [class.warn]="m.status === 'expiring'">
+              {{ m.subscription?.endDate | isoDate }}
+            </td>
+            <td class="mono muted">{{ m.rfid | rfid }}</td>
+            <td><app-status-badge [status]="m.status" /></td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="state-message" [class.state-message--error]="members.error()">
+              {{
+                members.error() ??
+                  (members.loading() ? 'Se încarcă…' : 'Niciun membru nu corespunde filtrelor.')
+              }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <nav class="pager" aria-label="Paginare">
+    <span class="muted">
+      @if (range(); as r) {
+        Afișare {{ r.from }}–{{ r.to }} din {{ r.total }}
+      }
+    </span>
+    <div class="actions">
+      <button
+        type="button"
+        class="btn btn-sm btn-icon btn-ghost"
+        aria-label="Pagina anterioară"
+        [disabled]="page() <= 1"
+        (click)="goToPage(page() - 1)"
+      >
+        <app-icon name="chevron-left" [size]="18" />
+      </button>
+      <span class="page-indicator">{{ members.value()?.page ?? page() }} / {{ pages() }}</span>
+      <button
+        type="button"
+        class="btn btn-sm btn-icon btn-ghost"
+        aria-label="Pagina următoare"
+        [disabled]="page() >= pages()"
+        (click)="goToPage(page() + 1)"
+      >
+        <app-icon name="chevron-right" [size]="18" />
+      </button>
+    </div>
+  </nav>
+</div>
+
+@if (creating()) {
+  <app-member-form-dialog (saved)="onCreated($event)" (closed)="creating.set(false)" />
+}

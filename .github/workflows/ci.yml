@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only token: CI never needs to write to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  back-end:
+    name: Back-end (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: back-end
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fight_academy_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway CI database credentials, not secrets.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fight_academy?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fight_academy_test?schema=public
+      APP_TIMEZONE: Europe/Bucharest
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: back-end/package-lock.json
+      - run: npm ci # also generates the Prisma client (postinstall)
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  front-end:
+    name: Front-end (format, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: front-end/front-end
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: front-end/front-end/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run test:ci
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  images:
+    name: Build and push Docker images
+    needs: [back-end, front-end]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: back-end
+          target: runtime
+          push: true
+          tags: ghcr.io/trutzzi/fap-api:${{ github.sha }},ghcr.io/trutzzi/fap-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: API tools image (migrations, user scripts)
+        uses: docker/build-push-action@v6
+        with:
+          context: back-end
+          target: tools
+          push: true
+          tags: ghcr.io/trutzzi/fap-api-tools:${{ github.sha }},ghcr.io/trutzzi/fap-api-tools:latest
+          cache-from: type=gha,scope=api
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: front-end/front-end
+          push: true
+          tags: ghcr.io/trutzzi/fap-web:${{ github.sha }},ghcr.io/trutzzi/fap-web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+  deploy:
+    name: Deploy to fap.valentintruta.ro
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://fap.valentintruta.ro
+    # Never run two deploys at once; never cancel one half-way.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH (pinned host key)
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Upload compose file
+        run: |
+          ssh "$SSH_TARGET" 'mkdir -p ~/fap && test -f ~/fap/.env'
+          scp deploy/docker-compose.yml "$SSH_TARGET:fap/docker-compose.yml"
+      - name: Pull images and restart
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The short-lived job token goes over stdin, never into the command line or a file.
+          printf '%s' "$GHCR_TOKEN" | ssh "$SSH_TARGET" \
+            "cd ~/fap && docker login ghcr.io -u '${{ github.actor }}' --password-stdin \
+             && export IMAGE_TAG='${{ github.sha }}' \
+             && docker compose pull \
+             && docker compose up -d --remove-orphans; status=\$?; docker logout ghcr.io; exit \$status"
+      - name: Wait until healthy
+        run: |
+          ssh "$SSH_TARGET" 'cd ~/fap && for i in $(seq 1 30); do
+              api=$(docker inspect -f "{{.State.Health.Status}}" fap-api-1 2>/dev/null)
+              web=$(docker inspect -f "{{.State.Health.Status}}" fap-web-1 2>/dev/null)
+              [ "$api" = healthy ] && [ "$web" = healthy ] && { echo "api=$api web=$web"; docker image prune -f >/dev/null; exit 0; }
+              sleep 5
+            done
+            docker compose ps; docker compose logs --tail 80 migrate api web; exit 1'
+      - name: Smoke test over HTTPS
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 https://fap.valentintruta.ro/login -o /dev/null
+          curl -fsS https://fap.valentintruta.ro/api/club

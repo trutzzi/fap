@@ -1,0 +1,8 @@
+node_modules
+dist
+.angular
+coverage
+.git
+llm-full.txt
+llm.txt
+*.log

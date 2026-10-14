@@ -1,0 +1,148 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.search {
+  position: relative;
+  flex: 1 1 380px;
+  color: var(--text-muted);
+}
+.search app-icon {
+  position: absolute;
+  left: 14px;
+  top: 13px;
+}
+.search .input {
+  padding-left: 42px;
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.course-select .input {
+  min-width: 180px;
+  min-height: 40px;
+  background: var(--surface-hover);
+  border-color: var(--border);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: opacity 0.15s;
+}
+.table-wrap.loading {
+  opacity: 0.6;
+}
+
+table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font: 600 12px var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-strong);
+  text-decoration: none;
+}
+.member .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+.name {
+  display: block;
+  font-weight: 600;
+}
+.small {
+  display: block;
+  font-size: 12px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.strong,
+strong {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.usage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.meter {
+  width: 128px;
+  --gap: 3px;
+}
+.usage-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.warn {
+  color: var(--warning);
+}
+.full {
+  color: var(--danger);
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.page-indicator {
+  align-self: center;
+  min-width: 56px;
+  text-align: center;
+  font-weight: 700;
+}

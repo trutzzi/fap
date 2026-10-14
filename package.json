@@ -1,0 +1,25 @@
+{
+  "name": "fight-academy-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FightAcademy gym platform: Angular front-end + Express/PostgreSQL back-end",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "npm install && npm --prefix back-end install && npm --prefix front-end/front-end install",
+    "start": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,red \"npm:start:api\" \"npm:start:web\"",
+    "start:api": "npm --prefix back-end run dev",
+    "start:web": "npm --prefix front-end/front-end run start:api",
+    "start:mock": "npm --prefix front-end/front-end start",
+    "build": "npm --prefix back-end run build && npm --prefix front-end/front-end run build",
+    "test": "npm --prefix back-end test && npm --prefix front-end/front-end test -- --watch=false",
+    "format": "npm --prefix back-end run format && npm --prefix front-end/front-end exec -- prettier --write \"src/**/*.{ts,html,css}\"",
+    "db:migrate": "npm --prefix back-end run db:migrate",
+    "db:seed": "npm --prefix back-end run db:seed",
+    "db:studio": "npm --prefix back-end run db:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

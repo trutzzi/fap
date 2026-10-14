@@ -1,0 +1,232 @@
+// FightAcademy database schema. Run `npm run db:migrate` after changing it.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlanId {
+  sessions12
+  unlimited
+}
+
+enum CheckInMethod {
+  rfid
+  manual
+}
+
+enum Role {
+  /// Everything, including club settings, courses, schedule and plans.
+  admin
+  /// Members, subscriptions, cards and check-ins.
+  reception
+  /// Read-only: today's attendees of the courses they coach, the schedule, check-in.
+  coach
+}
+
+/// Staff account. Created with `npm run user:create`.
+model User {
+  id             String    @id @default(cuid())
+  /// Stored lowercase.
+  email          String    @unique
+  name           String
+  /// `scrypt$N$r$p$salt$hash`, see src/lib/password.ts.
+  passwordHash   String    @map("password_hash")
+  role           Role
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz
+  sessions       Session[]
+  /// Courses this user coaches (role `coach`).
+  coachedCourses Course[]
+
+  @@map("users")
+}
+
+model Session {
+  /// SHA-256 of the cookie token; the token itself is never stored.
+  id        String   @id
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// The club's details; a single row with id 1.
+model Club {
+  id        Int      @id @default(1)
+  name      String
+  address   String
+  phone     String
+  email     String
+  website   String
+  /// IANA timezone for "today", training times and check-in dates.
+  timezone  String
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("club")
+}
+
+model Plan {
+  id            PlanId         @id
+  name          String
+  description   String
+  /// Null means unlimited sessions.
+  sessionLimit  Int?           @map("session_limit")
+  /// Monthly price in lei; null until configured.
+  price         Int?
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Course {
+  id          String         @id @default(cuid())
+  name        String
+  /// `#rrggbb`, used in the schedule.
+  color       String
+  /// Coach name as displayed in the schedule.
+  coach       String
+  /// The coach's account, which gives them access to this course's attendees.
+  coachUserId String?        @map("coach_user_id")
+  coachUser   User?          @relation(fields: [coachUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  slots       TrainingSlot[]
+  members     MemberCourse[]
+
+  @@index([coachUserId])
+  @@map("courses")
+}
+
+/// A recurring weekly training.
+model TrainingSlot {
+  id           String        @id @default(cuid())
+  courseId     String        @map("course_id")
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// ISO weekday: 1 = Monday … 7 = Sunday.
+  weekday      Int           @db.SmallInt
+  /// Local start time, `HH:mm`.
+  time         String        @db.Char(5)
+  durationMin  Int           @map("duration_min") @db.SmallInt
+  capacity     Int           @db.SmallInt
+  label        String?
+  checkIns     CheckIn[]
+  refusedScans RefusedScan[]
+
+  @@index([weekday])
+  @@map("training_slots")
+}
+
+model Member {
+  id           String         @id @default(cuid())
+  firstName    String         @map("first_name")
+  lastName     String         @map("last_name")
+  phone        String
+  email        String         @default("")
+  /// Normalized card code: uppercase hex, no separators.
+  rfid         String?        @unique
+  joinedAt     DateTime       @map("joined_at") @db.Date
+  /// GDPR consent to store a photo (for minors: a parent's consent). Required for `photo`.
+  photoConsent Boolean        @default(false) @map("photo_consent")
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  courses      MemberCourse[]
+  subscription Subscription?
+  checkIns     CheckIn[]
+  photo        MemberPhoto?
+  refusedScans RefusedScan[]
+
+  @@index([lastName, firstName])
+  @@map("members")
+}
+
+model MemberCourse {
+  memberId String @map("member_id")
+  courseId String @map("course_id")
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, courseId])
+  @@index([courseId])
+  @@map("member_courses")
+}
+
+/// The member's current subscription; setting a new one replaces it.
+model Subscription {
+  memberId  String   @id @map("member_id")
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId    PlanId   @map("plan_id")
+  plan      Plan     @relation(fields: [planId], references: [id])
+  startDate DateTime @map("start_date") @db.Date
+  /// Inclusive: start + 1 month − 1 day. Stored so usage can be counted in SQL.
+  endDate   DateTime @map("end_date") @db.Date
+
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+model CheckIn {
+  id            String        @id @default(cuid())
+  memberId      String        @map("member_id")
+  member        Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  slotId        String?       @map("slot_id")
+  slot          TrainingSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  /// Snapshot of the training name, kept if the slot is deleted later.
+  trainingLabel String?       @map("training_label")
+  /// Local date in the academy timezone, denormalized from `timestamp` for filtering.
+  date          DateTime      @db.Date
+  timestamp     DateTime      @default(now()) @db.Timestamptz
+  method        CheckInMethod
+
+  @@index([memberId, date])
+  @@index([date])
+  @@index([slotId, date])
+  @@map("check_ins")
+}
+
+/// Member photo, kept out of `members` so list queries stay light. Resized client-side.
+model MemberPhoto {
+  memberId  String   @id @map("member_id")
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  /// image/jpeg, image/png or image/webp
+  mimeType  String   @map("mime_type")
+  data      Bytes
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("member_photos")
+}
+
+enum RefusalReason {
+  limit
+  expired
+  no_subscription
+}
+
+/// A scan that was refused. Never counts as a session; shown to coaches in the class list.
+/// Repeated taps for the same training are merged (latest time kept).
+model RefusedScan {
+  id            String        @id @default(cuid())
+  memberId      String        @map("member_id")
+  member        Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  slotId        String?       @map("slot_id")
+  slot          TrainingSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  trainingLabel String?       @map("training_label")
+  date          DateTime      @db.Date
+  timestamp     DateTime      @default(now()) @db.Timestamptz
+  reason        RefusalReason
+
+  @@index([date])
+  @@index([memberId, date])
+  @@map("refused_scans")
+}

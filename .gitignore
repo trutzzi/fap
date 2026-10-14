@@ -1,0 +1,20 @@
+# Dependencies and build output (each project also has its own .gitignore)
+node_modules
+dist
+coverage
+.angular
+
+# Secrets: never commit environment files (examples are fine)
+.env
+.env.*
+!.env.example
+
+# Prisma client is generated on install
+back-end/src/generated
+
+# Leftover empty, root-owned git dir from `ng new` (delete with sudo when convenient)
+front-end/front-end/.git-angular-cli-unused
+
+# OS / editor
+.DS_Store
+*.log

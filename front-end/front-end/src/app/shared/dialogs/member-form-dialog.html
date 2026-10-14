@@ -1,0 +1,146 @@
+<app-modal
+  [heading]="member() ? 'Editează membru' : 'Membru nou'"
+  [wide]="true"
+  (closed)="closed.emit()"
+>
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (error(); as message) {
+      <div class="form-error" role="alert">{{ message }}</div>
+    }
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="member-first-name">Prenume</label>
+        <input
+          id="member-first-name"
+          class="input"
+          formControlName="firstName"
+          autocomplete="given-name"
+          [attr.aria-invalid]="invalid('firstName')"
+        />
+        @if (invalid('firstName')) {
+          <span class="field-error">Prenumele este obligatoriu.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="member-last-name">Nume</label>
+        <input
+          id="member-last-name"
+          class="input"
+          formControlName="lastName"
+          autocomplete="family-name"
+          [attr.aria-invalid]="invalid('lastName')"
+        />
+        @if (invalid('lastName')) {
+          <span class="field-error">Numele este obligatoriu.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="member-phone">Telefon</label>
+        <input
+          id="member-phone"
+          class="input"
+          type="tel"
+          formControlName="phone"
+          autocomplete="tel"
+          [attr.aria-invalid]="invalid('phone')"
+        />
+        @if (invalid('phone')) {
+          <span class="field-error">Introdu un număr de telefon valid.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="member-email">Email</label>
+        <input
+          id="member-email"
+          class="input"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          [attr.aria-invalid]="invalid('email')"
+        />
+        @if (invalid('email')) {
+          <span class="field-error">Introdu o adresă de email validă.</span>
+        }
+      </div>
+    </div>
+
+    <fieldset class="field">
+      <legend>Cursuri</legend>
+      <div class="checks">
+        @for (course of courses.value() ?? []; track course.id) {
+          <label class="check">
+            <input
+              #box
+              type="checkbox"
+              [checked]="hasCourse(course.id)"
+              (change)="toggleCourse(course.id, box.checked)"
+            />
+            <span class="swatch" [style.background]="course.color"></span>
+            {{ course.name }}
+          </label>
+        } @empty {
+          <span class="field-hint">Se încarcă cursurile…</span>
+        }
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label for="member-rfid">Card RFID</label>
+      <input
+        id="member-rfid"
+        class="input mono"
+        formControlName="rfid"
+        autocomplete="off"
+        placeholder="Apropie cardul de cititor sau introdu codul"
+        [attr.aria-invalid]="invalid('rfid')"
+      />
+      @if (invalid('rfid')) {
+        <span class="field-error">Codul trebuie să conțină 4–20 caractere hexazecimale.</span>
+      } @else {
+        <span class="field-hint">Opțional — poate fi alocat și mai târziu.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label class="check consent">
+        <input type="checkbox" formControlName="photoConsent" />
+        Acord pentru fotografie
+      </label>
+      <span class="field-hint">
+        Membrul (sau părintele, pentru copii) este de acord ca clubul să păstreze o fotografie
+        pentru verificarea la intrare. Dacă acordul este retras, fotografia se șterge.
+      </span>
+      @if (member()?.photoUrl && !form.controls.photoConsent.value) {
+        <span class="field-error">Fotografia existentă va fi ștearsă la salvare.</span>
+      }
+    </div>
+
+    @if (!member()) {
+      <div class="form-grid">
+        <div class="field">
+          <label for="member-plan">Abonament</label>
+          <select id="member-plan" class="input" formControlName="planId">
+            @for (plan of plans.value() ?? []; track plan.id) {
+              <option [value]="plan.id">{{ plan.name }}</option>
+            }
+            <option value="">Fără abonament deocamdată</option>
+          </select>
+        </div>
+        @if (form.controls.planId.value) {
+          <div class="field">
+            <label for="member-start">Începe la</label>
+            <input id="member-start" class="input" type="date" formControlName="startDate" />
+          </div>
+        }
+      </div>
+    }
+
+    <div class="form-footer">
+      <button type="button" class="btn btn-ghost" (click)="cancel()">Anulează</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Se salvează…' : member() ? 'Salvează' : 'Adaugă membru' }}
+      </button>
+    </div>
+  </form>
+</app-modal>

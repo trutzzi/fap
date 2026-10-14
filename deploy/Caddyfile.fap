@@ -1,0 +1,13 @@
+# Site block for the shared Caddy (/opt/albumflow/infra/caddy/Caddyfile on the server).
+# fap-api / fap-web are network aliases from deploy/docker-compose.yml.
+fap.valentintruta.ro {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy fap-api:3000
+	}
+
+	handle {
+		reverse_proxy fap-web:4000
+	}
+}

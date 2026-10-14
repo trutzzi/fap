@@ -1,0 +1,64 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow date">{{ now() | date: 'EEEE, d MMMM · HH:mm' }}</p>
+      <h1 class="page-title">{{ isCoach() ? 'Antrenamentele mele azi' : 'Antrenamente azi' }}</h1>
+    </div>
+  </header>
+
+  @if (data.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">
+      {{ message }}
+      <button type="button" class="btn btn-sm" (click)="data.reload()">Reîncearcă</button>
+    </div>
+  }
+
+  @if (data.value(); as d) {
+    @for (t of d.trainings; track t.slotId) {
+      <section
+        class="card training"
+        [class.live]="t.state === 'live'"
+        [attr.aria-labelledby]="'t-' + t.slotId"
+      >
+        <div class="card-header">
+          <div class="title">
+            <span class="time display">{{ t.time }}</span>
+            <div>
+              <h2 class="section-title" [id]="'t-' + t.slotId">
+                <span class="swatch" [style.background]="t.color"></span> {{ t.name }}
+              </h2>
+              <span class="muted small"
+                >{{ t.coach }} · {{ summary(t.attendees) }} · {{ t.capacity }} locuri</span
+              >
+            </div>
+          </div>
+          <span class="state" [class]="'state-' + t.state">{{ status(t) }}</span>
+        </div>
+        <app-attendee-list
+          [attendees]="t.attendees"
+          [linkToProfile]="isStaff()"
+          [photoSize]="48"
+          emptyText="Nimeni nu a făcut check-in încă."
+        />
+      </section>
+    } @empty {
+      <p class="card state-message">
+        @if (isCoach()) {
+          Nu ai antrenamente azi. Dacă ar trebui să ai, cere administratorului să îți asocieze
+          contul la cursurile tale.
+        } @else {
+          Nu sunt antrenamente programate azi.
+        }
+      </p>
+    }
+
+    @if (d.openGym.length) {
+      <section class="card training" aria-labelledby="open-gym">
+        <h2 id="open-gym" class="section-title">Acces liber · {{ summary(d.openGym) }}</h2>
+        <app-attendee-list [attendees]="d.openGym" [linkToProfile]="isStaff()" [photoSize]="48" />
+      </section>
+    }
+  } @else if (data.loading()) {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>

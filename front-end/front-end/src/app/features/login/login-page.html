@@ -1,0 +1,64 @@
+<main class="login">
+  <section class="panel" aria-labelledby="login-title">
+    <div class="brand">
+      <img ngSrc="logo-fight-academy.png" width="78" height="73" alt="" priority />
+      <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
+      @if (club.value(); as c) {
+        <span class="muted club">{{ c.name }}</span>
+      }
+    </div>
+
+    <h1 id="login-title" class="title">Autentificare</h1>
+
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (error(); as message) {
+        <div class="form-error" role="alert">{{ message }}</div>
+      }
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input
+          id="login-email"
+          class="input"
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+          autofocus
+          [attr.aria-invalid]="invalid('email')"
+        />
+        @if (invalid('email')) {
+          <span class="field-error">Introdu o adresă de email validă.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="login-password">Parolă</label>
+        <div class="password">
+          <input
+            id="login-password"
+            class="input"
+            [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+            [attr.aria-invalid]="invalid('password')"
+          />
+          <button
+            type="button"
+            class="toggle"
+            [attr.aria-pressed]="showPassword()"
+            [attr.aria-label]="showPassword() ? 'Ascunde parola' : 'Arată parola'"
+            (click)="showPassword.set(!showPassword())"
+          >
+            {{ showPassword() ? 'Ascunde' : 'Arată' }}
+          </button>
+        </div>
+        @if (invalid('password')) {
+          <span class="field-error">Introdu parola.</span>
+        }
+      </div>
+      <button type="submit" class="btn btn-primary submit" [disabled]="submitting()">
+        {{ submitting() ? 'Se verifică…' : 'Intră în cont' }}
+      </button>
+    </form>
+
+    <p class="muted note">Contul îl primești de la administratorul clubului.</p>
+  </section>
+</main>

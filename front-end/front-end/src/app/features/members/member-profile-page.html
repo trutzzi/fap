@@ -1,0 +1,255 @@
+<div class="page">
+  <a routerLink="/membri" class="back">‹ Înapoi la membri</a>
+
+  @if (member.value(); as m) {
+    <section class="card profile" aria-label="Date membru">
+      <div class="photo">
+        <app-member-avatar
+          class="avatar-lg display"
+          [initials]="m.initials"
+          [photoUrl]="m.photoUrl"
+          [size]="96"
+          [label]="m.photoUrl ? 'Fotografia lui ' + m.fullName : null"
+        />
+        <button
+          type="button"
+          class="link-btn"
+          [disabled]="!m.photoConsent"
+          (click)="dialog.set('photo')"
+        >
+          {{ m.photoUrl ? 'Schimbă fotografia' : 'Adaugă fotografie' }}
+        </button>
+        @if (!m.photoConsent) {
+          <span class="field-hint no-consent">Fără acord pentru fotografie</span>
+        }
+      </div>
+      <div class="identity">
+        <h1 class="page-title">{{ m.fullName }}</h1>
+        <div class="meta muted">
+          <span>{{ m.phone }}</span>
+          @if (m.email) {
+            <span>{{ m.email }}</span>
+          }
+          <span>Membru din {{ joinedLabel() }}</span>
+        </div>
+        <div class="tags">
+          @for (c of m.courses; track c.id) {
+            <span class="tag" [style.color]="c.color">{{ c.name }}</span>
+          }
+          <app-status-badge [status]="m.status" />
+        </div>
+      </div>
+      <div class="rfid">
+        <span class="label-caps">Card RFID</span>
+        <span class="mono rfid-code">{{ m.rfid | rfid }}</span>
+        <button type="button" class="link-btn" (click)="dialog.set('rfid')">
+          {{ m.rfid ? 'Schimbă cardul' : 'Alocă un card' }}
+        </button>
+      </div>
+      <div class="actions profile-actions">
+        <button type="button" class="btn btn-sm" (click)="checkIn()">Check-in manual</button>
+        <button type="button" class="btn btn-sm" (click)="dialog.set('edit')">
+          <app-icon name="edit" [size]="16" /> Editează
+        </button>
+        @if (isAdmin()) {
+          <button type="button" class="btn btn-sm btn-danger" (click)="dialog.set('delete')">
+            Șterge
+          </button>
+        }
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="subscription-title">
+        @if (m.subscription; as s) {
+          <div class="card-header top">
+            <div>
+              <span class="label-caps">Abonament curent</span>
+              <h2 id="subscription-title" class="plan-name">{{ s.planName }}</h2>
+            </div>
+            <div class="price">
+              <span class="muted small">Preț</span>
+              <strong>{{ s.price === null ? '[PREȚ]' : s.price }} lei</strong>
+            </div>
+          </div>
+          <div class="usage">
+            <span class="display usage-number">{{ s.used }}</span>
+            <span class="muted">
+              {{
+                s.sessionLimit === null
+                  ? 'prezențe în perioada curentă'
+                  : 'din ' + s.sessionLimit + ' ședințe folosite'
+              }}
+            </span>
+          </div>
+          @if (s.sessionLimit !== null) {
+            <app-session-meter [used]="s.used" [limit]="s.sessionLimit" />
+          }
+          <dl class="facts">
+            <div>
+              <dt>Început</dt>
+              <dd>{{ s.startDate | isoDate }}</dd>
+            </div>
+            <div>
+              <dt>{{ m.status === 'expired' ? 'A expirat' : 'Expiră' }}</dt>
+              <dd>{{ s.endDate | isoDate }}</dd>
+            </div>
+            <div>
+              <dt>Rămase</dt>
+              <dd>{{ s.remaining === null ? 'Nelimitat' : s.remaining + ' ședințe' }}</dd>
+            </div>
+          </dl>
+          <div class="actions">
+            <button
+              type="button"
+              class="btn btn-primary grow"
+              (click)="openSubscription('renew', s.planId)"
+            >
+              Reînnoiește
+            </button>
+            @if (s.planId === 'sessions12') {
+              <button
+                type="button"
+                class="btn grow"
+                (click)="openSubscription('change', 'unlimited')"
+              >
+                Treci pe Nelimitat
+              </button>
+            } @else {
+              <button type="button" class="btn grow" (click)="openSubscription('change')">
+                Schimbă abonamentul
+              </button>
+            }
+          </div>
+        } @else {
+          <h2 id="subscription-title" class="section-title">Abonament</h2>
+          <p class="muted">Membrul nu are un abonament activ.</p>
+          <button type="button" class="btn btn-primary" (click)="openSubscription('renew')">
+            Adaugă abonament
+          </button>
+        }
+      </section>
+
+      <section class="card" aria-labelledby="attendance-title">
+        <div class="card-header">
+          <h2 id="attendance-title" class="section-title">Prezență · {{ monthLabel() }}</h2>
+          <div class="actions month-nav">
+            <button
+              type="button"
+              class="btn btn-sm btn-icon btn-ghost"
+              aria-label="Luna anterioară"
+              (click)="shiftMonth(-1)"
+            >
+              <app-icon name="chevron-left" [size]="18" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-icon btn-ghost"
+              aria-label="Luna următoare"
+              [disabled]="isCurrentMonth()"
+              (click)="shiftMonth(1)"
+            >
+              <app-icon name="chevron-right" [size]="18" />
+            </button>
+          </div>
+        </div>
+        <div class="calendar" role="img" [attr.aria-label]="attendanceSummary()">
+          @for (d of weekdays; track d) {
+            <span class="dow">{{ d }}</span>
+          }
+          @for (cell of calendar(); track $index) {
+            @if (cell.day === null) {
+              <span></span>
+            } @else {
+              <span
+                class="day"
+                [class.present]="cell.present"
+                [class.today]="cell.today"
+                [class.future]="cell.future"
+              >
+                {{ cell.day }}
+              </span>
+            }
+          }
+        </div>
+        <div class="legend muted">
+          <span><span class="swatch present-swatch"></span>Prezent</span>
+          <span><span class="swatch today-swatch"></span>Azi</span>
+        </div>
+      </section>
+
+      <section class="card history" aria-labelledby="history-title">
+        <h2 id="history-title" class="section-title">Istoric check-in</h2>
+        <ul>
+          @for (h of m.history; track h.id) {
+            <li>
+              <span class="h-date">{{ historyDate(h) }}</span>
+              <span class="h-time muted">{{ h.timestamp | date: 'HH:mm' }}</span>
+              <span class="h-training">{{ h.trainingLabel ?? 'Acces liber' }}</span>
+              <span class="muted">{{
+                h.method === 'rfid' ? 'Card RFID' : 'Manual · recepție'
+              }}</span>
+              <span class="h-count">
+                {{
+                  h.sessionNumber !== null && h.sessionLimit !== null
+                    ? h.sessionNumber + ' / ' + h.sessionLimit
+                    : ''
+                }}
+              </span>
+            </li>
+          } @empty {
+            <li class="state-message">Niciun check-in încă.</li>
+          }
+        </ul>
+      </section>
+    </div>
+
+    @switch (dialog()) {
+      @case ('edit') {
+        <app-member-form-dialog [member]="m" (saved)="refresh()" (closed)="dialog.set(null)" />
+      }
+      @case ('photo') {
+        <app-photo-dialog [member]="m" (saved)="refresh()" (closed)="dialog.set(null)" />
+      }
+      @case ('rfid') {
+        <app-rfid-dialog [member]="m" (saved)="refresh()" (closed)="dialog.set(null)" />
+      }
+      @case ('renew') {
+        <app-subscription-dialog
+          [member]="m"
+          mode="renew"
+          [plan]="upgradePlan()"
+          (saved)="refresh()"
+          (closed)="dialog.set(null)"
+        />
+      }
+      @case ('change') {
+        <app-subscription-dialog
+          [member]="m"
+          mode="change"
+          [plan]="upgradePlan()"
+          (saved)="refresh()"
+          (closed)="dialog.set(null)"
+        />
+      }
+      @case ('delete') {
+        <app-confirm-dialog
+          heading="Șterge membrul"
+          [message]="
+            'Ștergi definitiv pe ' +
+            m.fullName +
+            ' și tot istoricul de check-in? Acțiunea nu poate fi anulată.'
+          "
+          confirmLabel="Șterge definitiv"
+          [action]="deleteAction"
+          (done)="onDeleted()"
+          (closed)="dialog.set(null)"
+        />
+      }
+    }
+  } @else if (member.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  } @else {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>

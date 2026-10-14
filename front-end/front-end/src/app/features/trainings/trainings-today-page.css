@@ -1,0 +1,36 @@
+.date {
+  margin: 0 0 4px;
+}
+.date::first-letter {
+  text-transform: uppercase;
+}
+
+.training.live {
+  border-color: var(--success);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.time {
+  font-size: 28px;
+}
+
+.small {
+  font-size: 13px;
+}
+
+.state {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.state-live {
+  color: var(--success);
+}
+.state-done {
+  color: var(--text-muted);
+}

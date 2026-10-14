@@ -1,0 +1,93 @@
+# FightAcademy production stack (fap.valentintruta.ro).
+#
+# Lives in ~/fap on the server next to a `.env` with POSTGRES_PASSWORD (never committed).
+# The GitHub Actions deploy job copies this file there and runs, with IMAGE_TAG set to the commit:
+#   docker compose pull && docker compose up -d
+#
+# No ports are published: the shared Caddy container (albumflow stack) reaches `fap-web`
+# and `fap-api` over the `albumflow_default` network and terminates HTTPS.
+name: fap
+
+x-database-url: &database-url postgresql://fap:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/fight_academy?schema=public
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: fight_academy
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fap -d fight_academy']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  # Applies pending Prisma migrations, then exits; the API waits for it.
+  migrate:
+    image: ghcr.io/trutzzi/fap-api-tools:${IMAGE_TAG:-latest}
+    restart: 'no'
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+
+  api:
+    image: ghcr.io/trutzzi/fap-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *database-url
+      NODE_ENV: production
+      PORT: '3000'
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Bucharest}
+      LOG_LEVEL: info
+      # Requests arrive from the Caddy container on a private Docker network.
+      TRUST_PROXY: uniquelocal
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      internal: {}
+      proxy:
+        aliases: [fap-api]
+    mem_limit: 512m
+
+  web:
+    image: ghcr.io/trutzzi/fap-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      # Angular SSR rejects unknown Host headers.
+      NG_ALLOWED_HOSTS: fap.valentintruta.ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:4000/login > /dev/null || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      proxy:
+        aliases: [fap-web]
+    mem_limit: 384m
+
+networks:
+  internal: {}
+  proxy:
+    external: true
+    name: albumflow_default
+
+volumes:
+  db-data: {}

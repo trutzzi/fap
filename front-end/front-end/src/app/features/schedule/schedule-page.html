@@ -1,0 +1,114 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <div class="week-nav">
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Săptămâna anterioară"
+          (click)="shiftWeek(-1)"
+        >
+          <app-icon name="chevron-left" [size]="18" />
+        </button>
+        <p class="eyebrow" aria-live="polite">{{ weekLabel() }}</p>
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-ghost"
+          aria-label="Săptămâna următoare"
+          (click)="shiftWeek(1)"
+        >
+          <app-icon name="chevron-right" [size]="18" />
+        </button>
+        @if (!isCurrentWeek()) {
+          <button type="button" class="btn btn-sm btn-ghost" (click)="shiftWeek(null)">
+            Săptămâna curentă
+          </button>
+        }
+      </div>
+      <h1 class="page-title">Orar &amp; Cursuri</h1>
+    </div>
+    @if (isAdmin()) {
+      <a class="btn" routerLink="/admin/cursuri">Administrează cursurile și orarul</a>
+    }
+  </header>
+
+  <ul class="legend" aria-label="Cursuri">
+    @for (c of courses.value() ?? []; track c.id) {
+      <li class="legend-item">
+        <span class="swatch" [style.background]="c.color"></span>{{ c.name }}
+      </li>
+    }
+  </ul>
+
+  @if (schedule.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  }
+
+  <div class="week" [class.loading]="schedule.loading()">
+    <div class="week-grid">
+      @for (day of schedule.value()?.days ?? []; track day.date) {
+        <section
+          class="day"
+          [class.today]="day.isToday"
+          [attr.aria-label]="weekdays[day.weekday - 1]"
+        >
+          <header class="day-header">
+            <h2 class="day-name">{{ weekdays[day.weekday - 1] }}</h2>
+            <span class="day-date">{{ dayNumber(day.date) }}</span>
+          </header>
+          <div class="entries">
+            @for (e of day.entries; track e.slot.id) {
+              <div class="entry" [class.live]="e.state === 'live'">
+                <span class="display entry-time">{{ e.slot.time }}</span>
+                <span class="entry-name" [style.color]="e.color">{{ e.name }}</span>
+                <span class="muted small">{{ e.coach }}</span>
+                <span class="small entry-stat">{{ entryStat(e) }}</span>
+              </div>
+            } @empty {
+              <p class="muted small empty">Liber</p>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+
+  <h2 class="section-title big">Cursuri</h2>
+  <div class="cards">
+    @for (c of courses.value() ?? []; track c.id) {
+      <article class="card course">
+        <div class="course-head">
+          <span class="swatch big-swatch" [style.background]="c.color"></span>
+          <h3 class="course-name">{{ c.name }}</h3>
+        </div>
+        <span class="muted small"
+          >Antrenor: <strong>{{ c.coach }}</strong></span
+        >
+        <span class="muted small">{{ c.scheduleSummary || 'Fără antrenamente în orar' }}</span>
+        <div class="course-foot small">
+          <span class="muted">Membri înscriși</span><strong>{{ c.memberCount }}</strong>
+        </div>
+      </article>
+    }
+  </div>
+
+  @if (isStaff()) {
+    <h2 class="section-title big">Tipuri de abonament</h2>
+    <div class="cards plans">
+      @for (p of plans.value() ?? []; track p.id) {
+        <article class="card plan" [class.featured]="p.sessionLimit === null">
+          <div class="course-head">
+            <h3 class="plan-name">{{ p.name }}</h3>
+          </div>
+          <span class="plan-price"
+            >{{ p.price === null ? '[PREȚ]' : p.price }} <span class="muted">lei / lună</span></span
+          >
+          <p class="muted">{{ p.description }}</p>
+          <span class="small"
+            ><strong>{{ p.memberCount }}</strong> membri</span
+          >
+        </article>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,476 @@
+/* Design tokens — FightAcademy dark theme. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0a0b0f;
+  --bg-sidebar: #0f1117;
+  --surface: #11131a;
+  --surface-soft: rgba(255, 255, 255, 0.02);
+  --surface-hover: rgba(255, 255, 255, 0.04);
+  --border: #1b1e27;
+  --border-strong: #2a2e3a;
+
+  --text: #e8e8ea;
+  --text-strong: #ffffff;
+  --text-muted: #a0a0a8;
+  --text-faint: #5a5d68;
+
+  --primary: #e10600;
+  --primary-soft: rgba(225, 6, 0, 0.14);
+  --accent: #ff3b3b;
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.12);
+  --warning: #f5c518;
+  --warning-soft: rgba(245, 197, 24, 0.14);
+  --danger: #ff3b3b;
+  --danger-soft: rgba(255, 59, 59, 0.14);
+  --neutral-soft: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Oswald', Impact, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-sm: 10px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+a:hover {
+  color: var(--text-strong);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-strong);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Typography helpers ---- */
+
+.page-title {
+  font-size: 40px;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.section-title {
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.label-caps {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.display {
+  font-family: var(--font-display);
+  color: var(--text-strong);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Layout ---- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.row-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.state-message {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.state-message--error {
+  color: var(--danger);
+}
+
+/* ---- Controls ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  font: 700 14px var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover {
+  border-color: var(--text-faint);
+  color: var(--text-strong);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.btn-primary:hover {
+  border-color: #ff2a24;
+  background: #ff2a24;
+}
+
+.btn-danger {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-icon {
+  min-width: 40px;
+  padding: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-soft);
+  color: var(--text);
+  white-space: nowrap;
+}
+.badge--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.badge--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.badge--muted {
+  color: var(--text-muted);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-strong);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ---- Forms ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field > label,
+.field > legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0;
+}
+
+fieldset.field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-strong);
+  font: 15px var(--font-body);
+}
+.input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.input[type='color'] {
+  padding: 4px;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.form-error {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.check:has(input:checked) {
+  border-color: var(--accent);
+}
+.check input {
+  accent-color: var(--primary);
+}
+
+.form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+.form-footer .start {
+  margin-right: auto;
+}
+
+.input.textarea {
+  min-height: 88px;
+  padding: 10px 14px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* ---- Sub-navigation tabs (admin) ---- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+}
+.tabs a:hover {
+  color: var(--text-strong);
+}
+.tabs a.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--text-strong);
+}
+
+.field > .check {
+  align-self: flex-start;
+}

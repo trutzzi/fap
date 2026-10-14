@@ -1,0 +1,123 @@
+<div class="kiosk">
+  <header class="top">
+    <a class="brand" routerLink="/dashboard" aria-label="Înapoi la administrare">
+      <img ngSrc="logo-fight-academy.png" width="60" height="56" alt="" priority />
+      <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
+    </a>
+    <div class="now">
+      <div class="current">
+        <span class="muted label">Antrenament curent</span>
+        @if (status.value()?.current; as t) {
+          <strong>{{ t.label }} · {{ t.time }} · {{ t.coach }}</strong>
+        } @else {
+          <strong>Niciun antrenament acum</strong>
+        }
+      </div>
+      <time class="display clock">{{ now() | date: 'HH:mm' }}</time>
+    </div>
+  </header>
+
+  <div class="panels">
+    <section class="panel scan" aria-labelledby="scan-title">
+      <div class="rings" [class.busy]="busy()">
+        <div class="ring-inner">
+          <app-icon name="card" [size]="72" [strokeWidth]="1.6" />
+        </div>
+      </div>
+      <div>
+        <h1 id="scan-title" class="scan-title display">Apropie cardul</h1>
+        <p class="muted scan-hint">de cititorul de sub ecran pentru check-in</p>
+      </div>
+      <label class="visually-hidden" for="rfid-reader">Cod card RFID</label>
+      <input
+        #reader
+        id="rfid-reader"
+        class="visually-hidden"
+        autocomplete="off"
+        inputmode="none"
+        (keydown.enter)="scan(reader)"
+        (blur)="focusReader()"
+      />
+      <button
+        type="button"
+        class="btn forgot"
+        [hidden]="!canSearch()"
+        (click)="searching.set(true)"
+      >
+        Ai uitat cardul? Caută-ți numele
+      </button>
+    </section>
+
+    <section
+      class="panel result"
+      aria-live="assertive"
+      [style.--tone]="view()?.color ?? 'var(--border)'"
+    >
+      @if (view(); as v) {
+        <div class="result-head">
+          <span class="result-icon">
+            <app-icon
+              [name]="v.tone === 'success' ? 'check' : 'alert'"
+              [size]="28"
+              [strokeWidth]="3"
+            />
+          </span>
+          <h2 class="result-title">{{ v.headline }}</h2>
+        </div>
+        <div class="who">
+          @if (v.member; as m) {
+            <app-member-avatar
+              class="kiosk-photo display"
+              [initials]="m.initials"
+              [photoUrl]="m.photoUrl"
+              [size]="132"
+              [label]="m.photoUrl ? 'Fotografia lui ' + m.fullName : null"
+            />
+          }
+          <div>
+            <p class="display member-name">{{ v.name }}</p>
+            @if (v.line) {
+              <p class="muted line">{{ v.line }}</p>
+            }
+          </div>
+        </div>
+        @if (v.sub; as sub) {
+          @if (v.limited) {
+            <div class="usage">
+              <app-session-meter
+                [used]="sub.used"
+                [limit]="sub.sessionLimit!"
+                [height]="30"
+                [tone]="v.color"
+              />
+              <div class="usage-text">
+                <span>{{ v.usage }}</span>
+                <span class="muted">{{ v.until }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="unlimited">
+              <strong>Abonament Nelimitat</strong>
+              <span class="muted">{{ v.until }}</span>
+            </div>
+          }
+        }
+        <p class="footer">{{ v.footer }}</p>
+      } @else if (error(); as message) {
+        <h2 class="result-title idle-title">Eroare</h2>
+        <p class="footer">{{ message }}</p>
+      } @else {
+        <h2 class="result-title idle-title">Bine ai venit!</h2>
+        <p class="muted line">Apropie cardul de cititor. Rezultatul check-in-ului apare aici.</p>
+      }
+    </section>
+  </div>
+</div>
+
+@if (searching()) {
+  <app-member-picker-dialog
+    heading="Caută-ți numele"
+    (picked)="submit({ memberId: $event.id })"
+    (closed)="closeSearch()"
+  />
+}

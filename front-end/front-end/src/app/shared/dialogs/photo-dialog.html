@@ -1,0 +1,69 @@
+<app-modal [heading]="'Fotografie · ' + member().fullName" (closed)="closed.emit()">
+  @if (error(); as message) {
+    <div class="form-error" role="alert">{{ message }}</div>
+  }
+
+  <div class="stage">
+    @switch (mode()) {
+      @case ('choose') {
+        @if (member().photoUrl) {
+          <app-member-avatar
+            class="frame"
+            [initials]="member().initials"
+            [photoUrl]="member().photoUrl"
+            [size]="320"
+            [label]="'Fotografia actuală a lui ' + member().fullName"
+          />
+        }
+        <div class="choices">
+          <label class="btn btn-primary">
+            Încarcă o imagine
+            <input
+              #file
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="visually-hidden"
+              (change)="onFile(file)"
+            />
+          </label>
+          <button type="button" class="btn" (click)="startCamera()">Fă o fotografie</button>
+        </div>
+        <p class="field-hint" style="margin: 0; text-align: center">
+          Imaginea este decupată pătrat și micșorată înainte de salvare.
+        </p>
+      }
+      @case ('camera') {
+        <video #video autoplay playsinline muted aria-label="Previzualizare cameră"></video>
+        <div class="choices">
+          <button type="button" class="btn btn-primary" (click)="capture()">Fotografiază</button>
+          <button type="button" class="btn btn-ghost" (click)="retake()">Înapoi</button>
+        </div>
+      }
+      @case ('preview') {
+        @if (preview(); as p) {
+          <img class="frame" [src]="p.url" [alt]="'Fotografie nouă pentru ' + member().fullName" />
+        }
+        <div class="choices">
+          <button type="button" class="btn btn-ghost" (click)="retake()">Alege alta</button>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="form-footer">
+    @if (member().photoUrl && mode() === 'choose') {
+      <button type="button" class="btn btn-danger start" [disabled]="busy()" (click)="remove()">
+        Șterge fotografia
+      </button>
+    }
+    <button type="button" class="btn btn-ghost" (click)="modal().close()">Anulează</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="busy() || mode() !== 'preview'"
+      (click)="save()"
+    >
+      {{ busy() ? 'Se salvează…' : 'Salvează' }}
+    </button>
+  </div>
+</app-modal>

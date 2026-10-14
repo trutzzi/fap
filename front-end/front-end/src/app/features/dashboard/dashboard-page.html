@@ -1,0 +1,181 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow date">{{ now() | date: 'EEEE, d MMMM · HH:mm' }}</p>
+      <h1 class="page-title">Dashboard</h1>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" (click)="dialog.set('check-in')">Check-in manual</button>
+      <button type="button" class="btn btn-primary" (click)="dialog.set('new-member')">
+        + Membru nou
+      </button>
+    </div>
+  </header>
+
+  @if (dashboard.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">
+      {{ message }}
+      <button type="button" class="btn btn-sm" (click)="dashboard.reload()">Reîncearcă</button>
+    </div>
+  }
+
+  @if (dashboard.value(); as d) {
+    <section class="kpis" aria-label="Indicatori">
+      @for (k of kpis(); track k.label) {
+        <div class="card kpi">
+          <span class="label-caps">{{ k.label }}</span>
+          <span class="kpi-value display">{{ k.value }}</span>
+          <span class="muted">{{ k.sub }}</span>
+        </div>
+      }
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="today-title">
+        <div class="card-header">
+          <h2 id="today-title" class="section-title">Antrenamente azi</h2>
+          <a routerLink="/orar" class="small-link">Vezi orarul</a>
+        </div>
+        @for (t of d.today; track t.slotId) {
+          <div class="row-item training">
+            <span class="time display">{{ t.time }}</span>
+            <div class="training-body">
+              <div class="training-head">
+                <span>
+                  <span class="swatch" [style.background]="t.color"></span>
+                  <strong>{{ t.name }}</strong>
+                  <span class="muted"> · {{ t.coach }}</span>
+                </span>
+                <span class="training-status" [class]="'state-' + t.state">{{
+                  trainingStatus(t)
+                }}</span>
+              </div>
+              <div class="bar" role="img" [attr.aria-label]="fill(t) + '% din locuri ocupate'">
+                <div [style.width.%]="fill(t)" [style.background]="t.color"></div>
+              </div>
+              <span class="muted small">{{ trainingCount(t) }}</span>
+              @if (t.attendees.length) {
+                <details class="attendees" [open]="t.state === 'live'">
+                  <summary>{{ attendeesSummary(t.attendees) }}</summary>
+                  <app-attendee-list [attendees]="t.attendees" [linkToProfile]="true" />
+                </details>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="state-message">Nu sunt antrenamente programate azi.</p>
+        }
+        @if (d.openGym.length) {
+          <details class="attendees">
+            <summary>Acces liber, fără antrenament · {{ attendeesSummary(d.openGym) }}</summary>
+            <app-attendee-list [attendees]="d.openGym" [linkToProfile]="true" />
+          </details>
+        }
+      </section>
+
+      <section class="card" aria-labelledby="week-title">
+        <h2 id="week-title" class="section-title">Prezențe · ultimele 7 zile</h2>
+        <div class="chart" role="img" [attr.aria-label]="'Prezențe pe zi: ' + weekSummary()">
+          @for (day of week(); track day.date) {
+            <div class="chart-col">
+              <span class="chart-value">{{ day.count }}</span>
+              <div class="chart-bar" [class.today]="day.today" [style.height.px]="day.height"></div>
+              <span class="chart-label">{{ day.label }}</span>
+            </div>
+          }
+        </div>
+        <div class="chart-legend muted">
+          <span
+            >Medie: <strong>{{ d.weekAverage }} / zi</strong></span
+          >
+          @if (d.busiestTraining) {
+            <span
+              >Cea mai plină: <strong>{{ d.busiestTraining }}</strong></span
+            >
+          }
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="recent-title">
+        <div class="card-header">
+          <h2 id="recent-title" class="section-title">Check-in recente</h2>
+          <span class="live"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <ul class="list">
+          @for (r of d.recentCheckins; track r.id) {
+            <li>
+              <a class="checkin" [routerLink]="['/membri', r.memberId]">
+                <app-member-avatar [initials]="r.initials" [photoUrl]="r.photoUrl" />
+                <span class="checkin-body">
+                  <strong>{{ r.fullName }}</strong>
+                  <span class="muted small"
+                    >{{ r.trainingLabel ?? 'Acces liber' }} ·
+                    {{ r.timestamp | date: 'HH:mm' }}</span
+                  >
+                </span>
+                <span class="badge" [class.badge--warning]="r.warn">{{ r.usageLabel }}</span>
+              </a>
+            </li>
+          } @empty {
+            <li class="state-message">Niciun check-in încă.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="alerts-title">
+        <h2 id="alerts-title" class="section-title">Necesită atenție</h2>
+        @for (a of d.alerts; track a.kind + (a.memberId ?? '')) {
+          <div class="row-item">
+            <span class="dot" [class]="'dot-' + a.kind"></span>
+            <div class="alert-body">
+              <strong>{{ a.title }}</strong>
+              <span class="muted small">{{ a.detail }}</span>
+            </div>
+            @switch (a.kind) {
+              @case ('limit') {
+                <button type="button" class="btn btn-sm btn-ghost" (click)="resolveAlert(a)">
+                  Upgrade
+                </button>
+              }
+              @case ('expiring') {
+                <button type="button" class="btn btn-sm btn-ghost" (click)="resolveAlert(a)">
+                  Reînnoiește
+                </button>
+              }
+              @case ('no-card') {
+                <a
+                  class="btn btn-sm btn-ghost"
+                  routerLink="/membri"
+                  [queryParams]="{ filter: 'no-card' }"
+                  >Alocă</a
+                >
+              }
+            }
+          </div>
+        } @empty {
+          <p class="state-message">Totul este în regulă.</p>
+        }
+      </section>
+    </div>
+  } @else if (dashboard.loading()) {
+    <p class="state-message">Se încarcă…</p>
+  }
+</div>
+
+@switch (dialog()) {
+  @case ('new-member') {
+    <app-member-form-dialog (saved)="dashboard.reload()" (closed)="dialog.set(null)" />
+  }
+  @case ('check-in') {
+    <app-member-picker-dialog (picked)="checkIn($event)" (closed)="dialog.set(null)" />
+  }
+}
+@if (subscriptionTarget(); as target) {
+  <app-subscription-dialog
+    [member]="target.member"
+    [mode]="target.mode"
+    [plan]="target.plan"
+    (saved)="dashboard.reload()"
+    (closed)="subscriptionTarget.set(null)"
+  />
+}

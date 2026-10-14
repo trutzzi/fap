@@ -1,0 +1,198 @@
+.date {
+  margin: 0 0 4px;
+}
+.date::first-letter {
+  text-transform: uppercase;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.kpi {
+  gap: 6px;
+  padding: 20px;
+}
+
+.kpi-value {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 20px;
+}
+
+.small,
+.small-link {
+  font-size: 13px;
+}
+.small-link {
+  font-weight: 600;
+}
+
+.training {
+  gap: 16px;
+}
+
+.time {
+  width: 64px;
+  font-size: 22px;
+}
+
+.training-body,
+.alert-body,
+.checkin-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.training-body {
+  gap: 8px;
+}
+
+.training-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.training-head .swatch {
+  margin-right: 8px;
+}
+
+strong {
+  color: var(--text-strong);
+}
+
+.training-status {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.state-done {
+  color: var(--text-muted);
+}
+.state-live {
+  color: var(--success);
+}
+
+.bar {
+  height: 6px;
+  border-radius: 6px;
+  background: var(--border);
+  overflow: hidden;
+}
+.bar div {
+  height: 100%;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 170px;
+  padding-top: 10px;
+}
+
+.chart-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-bar {
+  width: 100%;
+  max-width: 44px;
+  min-height: 2px;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--border-strong);
+}
+.chart-bar.today {
+  background: var(--primary);
+}
+
+.chart-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 13px;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--success);
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checkin {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+.checkin:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.dot-limit {
+  background: var(--danger);
+}
+.dot-expiring {
+  background: var(--warning);
+}
+
+.attendees summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 4px 0;
+}
+.attendees[open] summary {
+  margin-bottom: 8px;
+}

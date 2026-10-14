@@ -1,0 +1,104 @@
+<section class="section" aria-labelledby="courses-title">
+  <div class="section-head">
+    <h2 id="courses-title" class="section-title">Cursuri</h2>
+    <button type="button" class="btn" (click)="dialog.set({ kind: 'course', course: null })">
+      + Curs nou
+    </button>
+  </div>
+  @if (courses.error(); as message) {
+    <div class="card state-message state-message--error" role="alert">{{ message }}</div>
+  }
+  <div class="cards">
+    @for (c of courses.value() ?? []; track c.id) {
+      <button type="button" class="card course" (click)="dialog.set({ kind: 'course', course: c })">
+        <span class="course-head">
+          <span class="swatch" [style.background]="c.color"></span>
+          <span class="course-name display">{{ c.name }}</span>
+          <app-icon name="edit" [size]="16" />
+        </span>
+        <span class="muted small"
+          >Antrenor: <strong>{{ c.coach }}</strong></span
+        >
+        <span class="muted small">{{ c.scheduleSummary || 'Fără antrenamente în orar' }}</span>
+        <span class="muted small"
+          ><strong>{{ c.memberCount }}</strong> membri înscriși</span
+        >
+      </button>
+    } @empty {
+      @if (!courses.loading()) {
+        <p class="state-message">Niciun curs. Adaugă primul curs.</p>
+      }
+    }
+  </div>
+</section>
+
+<section class="section" aria-labelledby="template-title">
+  <div class="section-head">
+    <div>
+      <h2 id="template-title" class="section-title">Program săptămânal</h2>
+      <p class="muted small" style="margin: 4px 0 0">
+        Antrenamentele se repetă în fiecare săptămână.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="!courses.value()?.length"
+      (click)="dialog.set({ kind: 'slot', slot: null, weekday: 1 })"
+    >
+      + Adaugă antrenament
+    </button>
+  </div>
+  <div class="week">
+    <div class="week-grid">
+      @for (day of week(); track day.weekday) {
+        <section class="day" [attr.aria-label]="day.name">
+          <h3 class="day-name">{{ day.name }}</h3>
+          <div class="entries">
+            @for (e of day.entries; track e.slot.id) {
+              <button
+                type="button"
+                class="entry"
+                (click)="dialog.set({ kind: 'slot', slot: e.slot, weekday: day.weekday })"
+              >
+                <span class="display entry-time">{{ e.slot.time }}</span>
+                <span class="entry-name" [style.color]="e.course?.color">{{
+                  e.slot.label ?? e.course?.name
+                }}</span>
+                <span class="muted small"
+                  >{{ e.slot.durationMin }} min · {{ e.slot.capacity }} locuri</span
+                >
+              </button>
+            }
+            <button
+              type="button"
+              class="add"
+              [attr.aria-label]="'Adaugă antrenament ' + day.name"
+              [disabled]="!courses.value()?.length"
+              (click)="dialog.set({ kind: 'slot', slot: null, weekday: day.weekday })"
+            >
+              <app-icon name="plus" [size]="16" />
+            </button>
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+</section>
+
+@if (dialog(); as d) {
+  @switch (d.kind) {
+    @case ('course') {
+      <app-course-dialog [course]="d.course" (changed)="reload()" (closed)="dialog.set(null)" />
+    }
+    @case ('slot') {
+      <app-slot-dialog
+        [slot]="d.slot"
+        [weekday]="d.weekday"
+        [courses]="courses.value() ?? []"
+        (changed)="reload()"
+        (closed)="dialog.set(null)"
+      />
+    }
+  }
+}
