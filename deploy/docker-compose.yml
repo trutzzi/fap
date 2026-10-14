@@ -80,8 +80,9 @@ services:
         Site|http://fap-web:4000/login|fap.valentintruta.ro,
         HTTPS public|https://fap.valentintruta.ro/login
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      # Start after the API is healthy, so a deploy doesn't log a false outage.
+      api:
+        condition: service_healthy
     networks: [internal, proxy]
     mem_limit: 128m
 
