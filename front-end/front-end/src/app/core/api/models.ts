@@ -70,6 +70,15 @@ export interface StaffAccount {
   lastLoginAt: string | null;
 }
 
+/** `POST /api/users` (admin): a new staff account; its email must be unused. */
+export interface NewStaffAccountInput {
+  name: string;
+  email: string;
+  role: Role;
+  /** At least `STAFF_PASSWORD_MIN_LENGTH` characters; the person can change it later. */
+  password: string;
+}
+
 /** `PUT /api/users/:id/password` (admin): sets an account's password and signs it out. */
 export interface SetPasswordInput {
   password: string;

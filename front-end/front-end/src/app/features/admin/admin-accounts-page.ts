@@ -5,19 +5,25 @@ import { StaffAccount } from '../../core/api/models';
 import { AuthService, ROLE_LABELS } from '../../core/auth/auth.service';
 import { createQuery } from '../../core/data/query';
 import { PasswordDialog } from '../../shared/dialogs/password-dialog';
+import { StaffAccountDialog } from './staff-account-dialog';
 
-/** Staff accounts and their passwords. New accounts are created on the server. */
+/** Staff accounts: list, create, set a password. */
 @Component({
   selector: 'app-admin-accounts-page',
-  imports: [DatePipe, PasswordDialog],
+  imports: [DatePipe, PasswordDialog, StaffAccountDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card accounts" aria-labelledby="accounts-title">
-      <div>
-        <h2 id="accounts-title" class="section-title">Conturi personal</h2>
-        <p class="muted" style="margin: 4px 0 0">
-          Setează parola oricărui cont. Persoana va fi deconectată și intră apoi cu parola nouă.
-        </p>
+      <div class="card-header">
+        <div>
+          <h2 id="accounts-title" class="section-title">Conturi personal</h2>
+          <p class="muted" style="margin: 4px 0 0">
+            Setează parola oricărui cont. Persoana va fi deconectată și intră apoi cu parola nouă.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" (click)="creating.set(true)">
+          Cont nou
+        </button>
       </div>
       @if (accounts.error(); as message) {
         <div class="form-error" role="alert">{{ message }}</div>
@@ -52,12 +58,12 @@ import { PasswordDialog } from '../../shared/dialogs/password-dialog';
           }
         }
       </ul>
-      <p class="muted small" style="margin: 0">
-        Conturile noi se creează pe server cu <code>npm run user:create</code>.
-      </p>
     </section>
     @if (editing(); as account) {
       <app-password-dialog [account]="account" (closed)="editing.set(null)" />
+    }
+    @if (creating()) {
+      <app-staff-account-dialog (created)="accounts.reload()" (closed)="creating.set(false)" />
     }
   `,
   styles: `
@@ -97,6 +103,7 @@ export class AdminAccountsPage {
   protected readonly me = inject(AuthService).user;
   protected readonly roleLabels = ROLE_LABELS;
   protected readonly editing = signal<StaffAccount | null>(null);
+  protected readonly creating = signal(false);
   protected readonly accounts = createQuery(
     () => null,
     () => this.academy.staffAccounts(),

@@ -222,9 +222,43 @@ describe('staff passwords', () => {
     await admin.put('/api/users/nope/password').send({ password: NEW }).expect(404);
   });
 
+  it('lets an admin create an account that can sign in', async () => {
+    const admin = await signedIn('admin');
+    const input = { name: ' Ana Pop ', email: ' Ana@Club.ro ', role: 'reception', password: NEW };
+    const res = await admin.post('/api/users').send(input).expect(201);
+    expect(res.body).toMatchObject({
+      name: 'Ana Pop',
+      email: 'ana@club.ro',
+      role: 'reception',
+      active: true,
+      lastLoginAt: null,
+    });
+    expect(res.body).not.toHaveProperty('passwordHash');
+    await login('ana@club.ro', NEW).expect(200);
+
+    const duplicate = await admin.post('/api/users').send(input).expect(409);
+    expect(duplicate.body.message).toBe('Există deja un cont pentru ana@club.ro.');
+    for (const [field, value, message] of [
+      ['email', 'nu-e-email', 'Adresa de email este invalidă.'],
+      ['role', 'owner', 'Rolul este invalid.'],
+      ['password', 'scurta', 'Parola trebuie să aibă cel puțin 10 caractere.'],
+      ['name', ' ', 'Numele este obligatoriu.'],
+    ]) {
+      const bad = await admin
+        .post('/api/users')
+        .send({ ...input, email: 'alt@club.ro', [field]: value })
+        .expect(400);
+      expect(bad.body.message).toBe(message);
+    }
+  });
+
   it('keeps accounts admin-only', async () => {
     const reception = await signedIn('reception');
     await reception.get('/api/users').expect(403);
+    await reception
+      .post('/api/users')
+      .send({ name: 'X', email: 'x@club.ro', role: 'admin', password: 'parola-noua-sigura' })
+      .expect(403);
     await reception
       .put(`/api/users/${USERS.admin.id}/password`)
       .send({ password: 'parola-noua-sigura' })

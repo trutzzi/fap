@@ -16,6 +16,7 @@ import {
   PaymentInput,
   PaymentMethod,
   PlanId,
+  Role,
   SubscriptionInput,
   TrainingSlotInput,
 } from '../../app/core/api/models';
@@ -310,6 +311,35 @@ export function createMockApi(db: Db = seed()): express.Router {
       lastLoginAt: sessions.lastLogin.get(id) ?? null,
     }));
     res.json(accounts);
+  });
+
+  api.post('/users', (req, res) => {
+    assertAdmin(req);
+    const b = (req.body ?? {}) as Body;
+    const name = text(b, 'name', 'Numele', { max: 60 });
+    const email = text(b, 'email', 'Emailul', { max: 120 }).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw badRequest('Adresa de email este invalidă.');
+    }
+    const role = b['role'] as Role;
+    if (!['admin', 'reception', 'coach'].includes(role)) throw badRequest('Rolul este invalid.');
+    if (typeof b['password'] !== 'string' || b['password'].length < STAFF_PASSWORD_MIN_LENGTH) {
+      throw badRequest(`Parola trebuie să aibă cel puțin ${STAFF_PASSWORD_MIN_LENGTH} caractere.`);
+    }
+    if (DEMO_USERS.some((u) => u.email === email)) {
+      throw new HttpError(409, `Există deja un cont pentru ${email}.`);
+    }
+    const account = { id: nextId('u'), email, name, role, password: b['password'] };
+    DEMO_USERS.push(account);
+    const body: StaffAccount = {
+      id: account.id,
+      email,
+      name,
+      role,
+      active: true,
+      lastLoginAt: null,
+    };
+    res.status(201).json(body);
   });
 
   api.get('/users/coaches', (req, res) => {

@@ -9,6 +9,7 @@ import {
   Course,
   CourseInput,
   Dashboard,
+  NewStaffAccountInput,
   SetPasswordInput,
   StaffAccount,
   StaffRef,
@@ -44,6 +45,11 @@ export class AcademyService {
   /** All staff accounts (admin). */
   staffAccounts(): Observable<StaffAccount[]> {
     return this.http.get<StaffAccount[]>('/api/users');
+  }
+
+  /** New staff account (admin). */
+  createStaffAccount(input: NewStaffAccountInput): Observable<StaffAccount> {
+    return this.http.post<StaffAccount>('/api/users', input);
   }
 
   /** Sets an account's password and signs it out (admin). */

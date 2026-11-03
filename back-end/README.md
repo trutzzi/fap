@@ -60,7 +60,7 @@ All responses are JSON. Errors have the shape `{ "message": "…" }`, with messa
 | GET | `/health` | Liveness check, including the database |
 | POST | `/api/auth/login` · `/api/auth/logout` · GET `/api/auth/me` | Sign in / out, current user |
 | PUT | `/api/auth/password` | Change your own password (`{ currentPassword, newPassword }`, at least 10 characters) |
-| GET | `/api/users` · PUT `/api/users/:id/password` | Staff accounts / set an account's password (admin; signs that account out) |
+| GET / POST | `/api/users` · PUT `/api/users/:id/password` | Staff accounts: list, create (`{ name, email, role, password }`), set a password (admin; signs that account out) |
 | GET / PUT | `/api/club` | Club details (GET is public; PUT is admin) |
 | GET | `/api/dashboard` | Stat cards, today's trainings, last 7 days, recent check-ins, alerts |
 | GET | `/api/members?q=&filter=&courseId=&page=&pageSize=` | Member list (`filter`: all, active, expiring, limit, expired, no-card) |

@@ -159,6 +159,25 @@ export const ownPasswordSchema = z.object({
 
 export const setPasswordSchema = z.object({ password: newStaffPassword });
 
+export const newStaffAccountSchema = z.object({
+  name: text('Numele', 60),
+  email: z
+    .string('Adresa de email este invalidă.')
+    .trim()
+    .toLowerCase()
+    .max(120, 'Emailul poate avea maximum 120 de caractere.')
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Adresa de email este invalidă.'),
+  role: z.enum(['admin', 'reception', 'coach'], 'Rolul este invalid.'),
+  password: z
+    .string('Introdu parola.')
+    .min(1, 'Introdu parola.')
+    .min(
+      STAFF_PASSWORD_MIN_LENGTH,
+      `Parola trebuie să aibă cel puțin ${STAFF_PASSWORD_MIN_LENGTH} caractere.`,
+    )
+    .max(200, 'Parola este prea lungă.'),
+});
+
 const pin = (missing: string) =>
   z.string(missing).trim().min(1, missing).regex(MEMBER_PIN_PATTERN, 'PIN-ul are 4–6 cifre.');
 
