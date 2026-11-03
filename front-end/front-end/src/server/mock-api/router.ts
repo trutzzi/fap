@@ -7,6 +7,8 @@ import {
   CreatedMember,
   MemberAccessResult,
   MemberQrCode,
+  STAFF_PASSWORD_MIN_LENGTH,
+  StaffAccount,
   CourseInput,
   MemberFilter,
   MemberInput,
@@ -146,6 +148,35 @@ export function createMockApi(db: Db = seed()): express.Router {
     res.json(user);
   });
 
+  const newStaffPassword = (value: unknown): string => {
+    const password = typeof value === 'string' ? value : '';
+    if (!password) throw badRequest('Introdu parola nouă.');
+    if (password.length < STAFF_PASSWORD_MIN_LENGTH) {
+      throw badRequest(
+        `Parola nouă trebuie să aibă cel puțin ${STAFF_PASSWORD_MIN_LENGTH} caractere.`,
+      );
+    }
+    return password;
+  };
+
+  /** Own password; the user's other sessions are signed out. */
+  api.put('/auth/password', (req, res) => {
+    const user = sessions.user(req);
+    if (!user) throw new HttpError(401, 'Autentifică-te pentru a continua.');
+    const b = (req.body ?? {}) as Body;
+    if (typeof b['currentPassword'] !== 'string' || !b['currentPassword']) {
+      throw badRequest('Introdu parola actuală.');
+    }
+    const password = newStaffPassword(b['newPassword']);
+    const account = DEMO_USERS.find((u) => u.id === user.id)!;
+    if (account.password !== b['currentPassword']) {
+      throw badRequest('Parola actuală este greșită.');
+    }
+    account.password = password;
+    sessions.endAll(user.id, req);
+    res.status(204).end();
+  });
+
   api.post('/auth/logout', (req, res) => {
     sessions.end(req, res);
     res.status(204).end();
@@ -235,6 +266,63 @@ export function createMockApi(db: Db = seed()): express.Router {
     }
     member.pin = next;
     memberSessions.endAll(member.id, req);
+    res.status(204).end();
+  });
+
+  // ---- Everything below needs a staff session ----
+
+  api.use((req, _res, next) => {
+    next(sessions.user(req) ? undefined : new HttpError(401, 'Autentifică-te pentru a continua.'));
+  });
+
+  // Coaches: read-only views of their classes, the schedule, and check-in (as the back-end).
+  const coachAllowed: [string, RegExp][] = [
+    ['GET', /^\/trainings\/today$/],
+    ['GET', /^\/members\/[^/]+\/photo$/],
+    ['GET', /^\/schedule$/],
+    ['GET', /^\/courses$/],
+    ['GET', /^\/slots$/],
+    ['GET', /^\/kiosk\/status$/],
+    ['POST', /^\/checkins$/],
+  ];
+  api.use((req, _res, next) => {
+    const ok =
+      sessions.user(req)?.role !== 'coach' ||
+      coachAllowed.some(([method, path]) => method === req.method && path.test(req.path));
+    next(ok ? undefined : new HttpError(403, 'Nu ai drepturi pentru această acțiune.'));
+  });
+
+  api.get('/trainings/today', (req, res) => {
+    const user = sessions.user(req)!;
+    res.json(views.trainingsToday(user.role === 'coach' ? user.id : undefined));
+  });
+
+  // ---- Staff accounts (admin) ----
+
+  api.get('/users', (req, res) => {
+    assertAdmin(req);
+    const accounts: StaffAccount[] = DEMO_USERS.map(({ id, email, name, role }) => ({
+      id,
+      email,
+      name,
+      role,
+      active: true,
+      lastLoginAt: sessions.lastLogin.get(id) ?? null,
+    }));
+    res.json(accounts);
+  });
+
+  api.get('/users/coaches', (req, res) => {
+    assertAdmin(req);
+    res.json(DEMO_USERS.filter((u) => u.role === 'coach').map(({ id, name }) => ({ id, name })));
+  });
+
+  api.put('/users/:id/password', (req, res) => {
+    assertAdmin(req);
+    const account = DEMO_USERS.find((u) => u.id === req.params['id']);
+    if (!account) throw new HttpError(404, 'Contul nu a fost găsit.');
+    account.password = newStaffPassword(((req.body ?? {}) as Body)['password']);
+    sessions.endAll(account.id, req);
     res.status(204).end();
   });
 

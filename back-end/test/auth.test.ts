@@ -157,3 +157,77 @@ describe('admin settings', () => {
     ]);
   });
 });
+
+describe('staff passwords', () => {
+  const NEW = 'parola-noua-sigura';
+
+  it('lets any staff user change their own password, signing out their other devices', async () => {
+    const desk = await signedIn('reception');
+    const tablet = await signedIn('reception');
+    const wrong = await desk
+      .put('/api/auth/password')
+      .send({ currentPassword: 'gresit', newPassword: NEW })
+      .expect(400);
+    expect(wrong.body.message).toBe('Parola actuală este greșită.');
+    const short = await desk
+      .put('/api/auth/password')
+      .send({ currentPassword: PASSWORD, newPassword: 'scurta' })
+      .expect(400);
+    expect(short.body.message).toBe('Parola nouă trebuie să aibă cel puțin 10 caractere.');
+
+    await desk
+      .put('/api/auth/password')
+      .send({ currentPassword: PASSWORD, newPassword: NEW })
+      .expect(204);
+    await desk.get('/api/auth/me').expect(200);
+    await tablet.get('/api/auth/me').expect(401);
+    await login('receptie@test.ro', PASSWORD).expect(401);
+    await login('receptie@test.ro', NEW).expect(200);
+    // Coaches too.
+    const coach = await signedIn('coach');
+    await coach
+      .put('/api/auth/password')
+      .send({ currentPassword: PASSWORD, newPassword: NEW })
+      .expect(204);
+  });
+
+  it('lets an admin list accounts and set a password, signing that account out', async () => {
+    const admin = await signedIn('admin');
+    const reception = await signedIn('reception');
+    const list = await admin.get('/api/users').expect(200);
+    expect(list.body).toEqual(
+      expect.arrayContaining([
+        {
+          id: USERS.reception.id,
+          email: 'receptie@test.ro',
+          name: 'Recepție Test',
+          role: 'reception',
+          active: true,
+          lastLoginAt: null,
+        },
+      ]),
+    );
+    expect(list.body[0]).not.toHaveProperty('passwordHash');
+
+    await admin
+      .put(`/api/users/${USERS.reception.id}/password`)
+      .send({ password: NEW })
+      .expect(204);
+    await reception.get('/api/auth/me').expect(401);
+    await login('receptie@test.ro', NEW).expect(200);
+
+    // Setting their own password keeps the admin signed in.
+    await admin.put(`/api/users/${USERS.admin.id}/password`).send({ password: NEW }).expect(204);
+    await admin.get('/api/auth/me').expect(200);
+    await admin.put('/api/users/nope/password').send({ password: NEW }).expect(404);
+  });
+
+  it('keeps accounts admin-only', async () => {
+    const reception = await signedIn('reception');
+    await reception.get('/api/users').expect(403);
+    await reception
+      .put(`/api/users/${USERS.admin.id}/password`)
+      .send({ password: 'parola-noua-sigura' })
+      .expect(403);
+  });
+});

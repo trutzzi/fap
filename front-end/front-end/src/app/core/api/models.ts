@@ -50,6 +50,31 @@ export interface LoginInput {
   password: string;
 }
 
+/** Minimum length of a staff password (the API enforces it too). */
+export const STAFF_PASSWORD_MIN_LENGTH = 10;
+
+/** `PUT /api/auth/password`: the signed-in staff user changes their own password. */
+export interface OwnPasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** A staff account in Administrare › Conturi (admin only). */
+export interface StaffAccount {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  /** Deactivated accounts cannot sign in (`npm run user:deactivate`). */
+  active: boolean;
+  lastLoginAt: string | null;
+}
+
+/** `PUT /api/users/:id/password` (admin): sets an account's password and signs it out. */
+export interface SetPasswordInput {
+  password: string;
+}
+
 export interface Club {
   name: string;
   address: string;

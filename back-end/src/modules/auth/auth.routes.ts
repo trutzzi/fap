@@ -2,14 +2,15 @@ import { Router } from 'express';
 import type { AuthUser } from '../../contract/models.js';
 import type { Deps } from '../../deps.js';
 import { HttpError } from '../../lib/http-error.js';
-import { verifyAgainstDummy, verifyPassword } from '../../lib/password.js';
+import { hashPassword, verifyAgainstDummy, verifyPassword } from '../../lib/password.js';
 import { RateLimiter } from '../../lib/rate-limit.js';
-import { loginSchema, parse } from '../../lib/validation.js';
+import { loginSchema, ownPasswordSchema, parse } from '../../lib/validation.js';
 import { requireAuth } from './auth.middleware.js';
 import {
   clearSessionCookie,
   createSession,
   deleteSession,
+  hashToken,
   pruneSessions,
   readSessionToken,
   setSessionCookie,
@@ -62,6 +63,25 @@ export function authRouter({ db, clock }: Deps): Router {
 
   router.get('/me', requireAuth, (req, res) => {
     res.json(req.user);
+  });
+
+  /** Own password; the user's other devices are signed out, this one stays signed in. */
+  router.put('/password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = parse(ownPasswordSchema, req.body);
+    const user = await db.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new HttpError(400, 'Parola actuală este greșită.');
+    }
+    await db.$transaction([
+      db.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await hashPassword(newPassword) },
+      }),
+      db.session.deleteMany({
+        where: { userId: user.id, id: { not: hashToken(readSessionToken(req) ?? '') } },
+      }),
+    ]);
+    res.status(204).end();
   });
 
   router.post('/logout', async (req, res) => {

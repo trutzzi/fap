@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { MemberFilter } from '../contract/models.js';
+import { STAFF_PASSWORD_MIN_LENGTH, type MemberFilter } from '../contract/models.js';
 import { MEMBER_PIN_PATTERN } from '../domain/member-access.js';
 import { isIsoDate } from './dates.js';
 import { badRequest } from './http-error.js';
@@ -142,6 +142,22 @@ export const loginSchema = z.object({
     .max(200),
   password: z.string('Introdu parola.').min(1, 'Introdu parola.').max(200),
 });
+
+const newStaffPassword = z
+  .string('Introdu parola nouă.')
+  .min(1, 'Introdu parola nouă.')
+  .min(
+    STAFF_PASSWORD_MIN_LENGTH,
+    `Parola nouă trebuie să aibă cel puțin ${STAFF_PASSWORD_MIN_LENGTH} caractere.`,
+  )
+  .max(200, 'Parola nouă este prea lungă.');
+
+export const ownPasswordSchema = z.object({
+  currentPassword: z.string('Introdu parola actuală.').min(1, 'Introdu parola actuală.').max(200),
+  newPassword: newStaffPassword,
+});
+
+export const setPasswordSchema = z.object({ password: newStaffPassword });
 
 const pin = (missing: string) =>
   z.string(missing).trim().min(1, missing).regex(MEMBER_PIN_PATTERN, 'PIN-ul are 4–6 cifre.');

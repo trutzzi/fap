@@ -113,6 +113,12 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/admin/admin-plans-page').then((m) => m.AdminPlansPage),
           },
+          {
+            path: 'conturi',
+            title: 'Administrare · Conturi · FightAcademy',
+            loadComponent: () =>
+              import('./features/admin/admin-accounts-page').then((m) => m.AdminAccountsPage),
+          },
         ],
       },
       { path: 'setari', redirectTo: 'admin' },

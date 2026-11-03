@@ -34,7 +34,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-export const MIN_PASSWORD_LENGTH = 10;
+export { STAFF_PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from '../contract/models.js';
 
 let dummyHash: Promise<string> | undefined;
 

@@ -38,12 +38,15 @@ const COOKIE = 'fa_session';
 /** In-memory sessions (token → user); reset when the dev server restarts. */
 export class MockSessions {
   private readonly sessions = new Map<string, AuthUser>();
+  /** Last sign-in per user id, for the accounts list. */
+  readonly lastLogin = new Map<string, string>();
 
   login(email: string, password: string): AuthUser | null {
     const match = DEMO_USERS.find(
       (u) => u.email === email.trim().toLowerCase() && u.password === password,
     );
     if (!match) return null;
+    this.lastLogin.set(match.id, new Date().toISOString());
     const { password: _password, ...user } = match;
     return user;
   }
@@ -63,6 +66,14 @@ export class MockSessions {
     const token = this.token(req);
     if (token) this.sessions.delete(token);
     res.clearCookie(COOKIE, { path: '/' });
+  }
+
+  /** Signs a user out everywhere, optionally keeping the current request's session. */
+  endAll(userId: string, keep?: Request): void {
+    const kept = keep ? this.token(keep) : undefined;
+    for (const [token, user] of this.sessions) {
+      if (user.id === userId && token !== kept) this.sessions.delete(token);
+    }
   }
 
   private token(req: Request): string | undefined {

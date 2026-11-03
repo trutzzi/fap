@@ -9,6 +9,8 @@ import {
   Course,
   CourseInput,
   Dashboard,
+  SetPasswordInput,
+  StaffAccount,
   StaffRef,
   TrainingsToday,
   KioskStatus,
@@ -37,6 +39,16 @@ export class AcademyService {
   /** Coach accounts a course can be linked to (admin). */
   coaches(): Observable<StaffRef[]> {
     return this.http.get<StaffRef[]>('/api/users/coaches');
+  }
+
+  /** All staff accounts (admin). */
+  staffAccounts(): Observable<StaffAccount[]> {
+    return this.http.get<StaffAccount[]>('/api/users');
+  }
+
+  /** Sets an account's password and signs it out (admin). */
+  setStaffPassword(id: string, input: SetPasswordInput): Observable<void> {
+    return this.http.put<void>(`/api/users/${encodeURIComponent(id)}/password`, input);
   }
 
   schedule(week: string): Observable<WeekSchedule> {

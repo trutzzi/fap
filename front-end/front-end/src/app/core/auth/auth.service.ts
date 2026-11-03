@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, of, tap } from 'rxjs';
-import { AuthUser, LoginInput, Role } from '../api/models';
+import { AuthUser, LoginInput, OwnPasswordInput, Role } from '../api/models';
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Administrator',
@@ -47,6 +47,11 @@ export class AuthService {
       catchError(() => of(undefined)),
       finalize(() => this._user.set(null)),
     );
+  }
+
+  /** Own password; the API signs the user out on their other devices. */
+  changePassword(input: OwnPasswordInput): Observable<void> {
+    return this.http.put<void>('/api/auth/password', input);
   }
 
   /** Forgets the user locally, e.g. after the API reports the session expired. */

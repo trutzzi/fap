@@ -38,6 +38,14 @@
             <strong>{{ u.name }}</strong>
             <span class="muted">{{ roleLabel() }}</span>
           </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            aria-label="Schimbă parola"
+            (click)="changingPassword.set(true)"
+          >
+            Parolă
+          </button>
           <button type="button" class="btn btn-sm btn-ghost" (click)="logout()">Ieșire</button>
         </div>
       }
@@ -51,3 +59,6 @@
     <router-outlet />
   </main>
 </div>
+@if (changingPassword()) {
+  <app-password-dialog (closed)="changingPassword.set(false)" />
+}

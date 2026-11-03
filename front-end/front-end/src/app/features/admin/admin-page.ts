@@ -10,7 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     <div class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow" style="margin: 0 0 4px">Club, cursuri, orar și abonamente</p>
+          <p class="eyebrow" style="margin: 0 0 4px">Club, cursuri, orar, abonamente și conturi</p>
           <h1 class="page-title">Administrare</h1>
         </div>
       </header>
@@ -30,5 +30,6 @@ export class AdminPage {
     { path: 'club', label: 'Club' },
     { path: 'cursuri', label: 'Cursuri & orar' },
     { path: 'abonamente', label: 'Abonamente' },
+    { path: 'conturi', label: 'Conturi' },
   ];
 }
