@@ -122,6 +122,7 @@ describe('admin settings', () => {
       email: 'contact@fightacademy.ro',
       website: 'fightacademy.ro',
       timezone: 'Europe/Bucharest',
+      smsEnabled: true,
     };
     await admin.put('/api/club').send(club).expect(200);
     expect((await request(app).get('/api/club')).body).toEqual(club);

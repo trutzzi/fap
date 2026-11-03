@@ -2,7 +2,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { safeRedirect } from '../../core/auth/auth.guards';
@@ -11,7 +11,7 @@ import { createQuery, errorMessage } from '../../core/data/query';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, NgOptimizedImage],
+  imports: [ReactiveFormsModule, NgOptimizedImage, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './login-page.html',
   styleUrl: './login-page.css',

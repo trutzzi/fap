@@ -2,6 +2,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createDb } from '../src/db.js';
 import { hashPassword } from '../src/lib/password.js';
+import type { SmsSender } from '../src/lib/sms.js';
 import { SESSION_COOKIE, createSession } from '../src/modules/auth/sessions.js';
 
 export const db = createDb(process.env['TEST_DATABASE_URL']!);
@@ -10,7 +11,26 @@ export const db = createDb(process.env['TEST_DATABASE_URL']!);
 const START = () => new Date(2026, 9, 14, 19, 45);
 let now = START();
 export const setNow = (date: Date) => (now = date);
-export const app = createApp({ db, clock: () => now });
+
+/**
+ * SMS "sent" by the app. `smsControl.fails` simulates a provider error, `unconfigured` a
+ * server without SMSLink credentials.
+ */
+export const smsOutbox: { to: string; text: string }[] = [];
+export const smsControl = { fails: false, unconfigured: false };
+export const testSms: SmsSender = {
+  send(to, text) {
+    if (smsControl.fails) {
+      return Promise.reject(new Error('SMSLink: ERROR;8;Credit is not availabile!'));
+    }
+    if (smsControl.unconfigured) return Promise.resolve(false);
+    smsOutbox.push({ to, text });
+    return Promise.resolve(true);
+  },
+};
+export const PUBLIC_URL = 'https://club.test';
+
+export const app = createApp({ db, clock: () => now, sms: testSms, publicUrl: PUBLIC_URL });
 
 export const PASSWORD = 'parola-de-test-123';
 export const USERS = {
@@ -24,6 +44,9 @@ let passwordHash: string | undefined;
 /** Empties every table and inserts plans, one course with a Wednesday slot, and two users. */
 export async function resetData(): Promise<void> {
   now = START();
+  smsOutbox.length = 0;
+  smsControl.fails = false;
+  smsControl.unconfigured = false;
   passwordHash ??= await hashPassword(PASSWORD); // scrypt is slow on purpose: hash once
   await db.$executeRawUnsafe(
     'TRUNCATE uptime_checks, error_logs, payments, subscription_periods, sessions, users, club, check_ins, subscriptions, member_courses, members, training_slots, courses, plans CASCADE',

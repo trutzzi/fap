@@ -49,6 +49,12 @@ services:
       LOG_LEVEL: info
       # Requests arrive from the Caddy container on a private Docker network.
       TRUST_PROXY: uniquelocal
+      # Member PINs can be texted with SMSLink.ro (credentials in ~/fap/.env), once SMS is
+      # switched on in Administrare › Club. Until then reception hands the PIN over.
+      PUBLIC_URL: https://fap.valentintruta.ro
+      SMSLINK_CONNECTION_ID: ${SMSLINK_CONNECTION_ID:-}
+      SMSLINK_PASSWORD: ${SMSLINK_PASSWORD:-}
+      SMSLINK_SENDER: ${SMSLINK_SENDER:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

@@ -69,6 +69,7 @@ export function toSummary(row: MemberRow, used: number, today: string): MemberSu
       .sort((a, b) => a.name.localeCompare(b.name, 'ro')),
     subscription,
     status: memberStatus(subscription, today),
+    hasAccount: row.passwordHash !== null,
   };
 }
 

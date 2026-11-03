@@ -7,7 +7,8 @@ import { AuthService } from './auth.service';
 
 /**
  * When the API answers 401 (session expired or revoked), forget the user and send them to
- * the login page, returning to the current page afterwards. Auth calls handle 401 themselves.
+ * the login page, returning to the current page afterwards. Auth calls handle 401 themselves,
+ * and the member portal (`/api/account`) has its own session.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -16,7 +17,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((err: unknown) => {
       const expired =
-        err instanceof HttpErrorResponse && err.status === 401 && !req.url.startsWith('/api/auth/');
+        err instanceof HttpErrorResponse &&
+        err.status === 401 &&
+        !req.url.startsWith('/api/auth/') &&
+        !req.url.startsWith('/api/account');
       if (expired && auth.user()) {
         auth.clear();
         toast.error('Sesiunea a expirat. Autentifică-te din nou.');

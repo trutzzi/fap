@@ -12,10 +12,11 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { catchError, finalize, of, switchMap } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
-import { MemberSummary, PlanId } from '../../core/api/models';
+import { CreatedMember, MemberSummary, PlanId } from '../../core/api/models';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { toIsoDate } from '../../core/util/dates';
+import { MemberAccessNotice } from '../ui/member-access-notice';
 import { Modal } from '../ui/modal';
 import { PhotoPicker } from '../ui/photo-picker';
 
@@ -25,7 +26,7 @@ export const RFID_PATTERN = /^[0-9a-fA-F·:\s-]{4,30}$/;
 /** Create a member (with an optional first subscription) or edit an existing one. */
 @Component({
   selector: 'app-member-form-dialog',
-  imports: [Modal, ReactiveFormsModule, PhotoPicker],
+  imports: [Modal, ReactiveFormsModule, PhotoPicker, MemberAccessNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './member-form-dialog.html',
 })
@@ -53,6 +54,8 @@ export class MemberFormDialog implements OnInit {
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** A new member whose PIN SMS failed: the dialog shows the PIN before closing. */
+  protected readonly created = signal<CreatedMember | null>(null);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     firstName: ['', [Validators.required, Validators.maxLength(40)]],
@@ -140,8 +143,16 @@ export class MemberFormDialog implements OnInit {
       )
       .subscribe({
         next: (member) => {
+          const access = 'access' in member ? (member as CreatedMember).access : null;
+          if (access?.temporaryPin) {
+            this.toast.success(`${member.fullName} a fost adăugat.`);
+            this.created.set(member as CreatedMember);
+            return;
+          }
           this.toast.success(
-            existing ? 'Modificările au fost salvate.' : `${member.fullName} a fost adăugat.`,
+            existing
+              ? 'Modificările au fost salvate.'
+              : `${member.fullName} a fost adăugat. Codul PIN a fost trimis prin SMS.`,
           );
           this.saved.emit(member);
           this.modal().close();
@@ -152,5 +163,12 @@ export class MemberFormDialog implements OnInit {
 
   protected cancel(): void {
     this.modal().close();
+  }
+
+  /** The member was already saved; report it however the dialog is closed. */
+  protected onClosed(): void {
+    const created = this.created();
+    if (created) this.saved.emit(created);
+    this.closed.emit();
   }
 }

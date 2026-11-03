@@ -11,6 +11,7 @@ import {
   requireJsonForMutations,
   restrictCoaches,
 } from './modules/auth/auth.middleware.js';
+import { accountRouter } from './modules/account/account.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { checkInsRouter } from './modules/check-ins/check-ins.routes.js';
@@ -51,8 +52,10 @@ export function createApp({
   const api = express.Router();
   api.use(requireJsonForMutations);
   api.use(authenticate(deps));
-  // Public: login and the club's name/contact details. Everything after needs a session.
+  // Public: login, the club's name/contact details and the member portal (which checks its
+  // own member session). Everything after needs a staff session.
   api.use('/auth', authRouter(deps));
+  api.use('/account', accountRouter(deps));
   api.use('/club', clubRouter(deps));
   api.use(requireAuth);
   api.use(restrictCoaches);

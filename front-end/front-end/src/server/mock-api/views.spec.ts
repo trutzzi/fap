@@ -69,6 +69,8 @@ function addMember(db: Db, overrides: Partial<MemberEntity>, sessions = 0): Memb
     subscription: { planId: 'sessions12', startDate: '2026-10-01' },
     photoConsent: false,
     photo: null,
+    pin: null,
+    qrSecret: null,
     ...overrides,
   };
   db.members.push(member);

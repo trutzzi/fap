@@ -80,6 +80,16 @@ import { ToastService } from '../../core/ui/toast.service';
             <span class="field-hint">Folosit pentru „azi”, orele antrenamentelor și check-in.</span>
           </div>
         </div>
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" formControlName="smsEnabled" />
+            Trimite prin SMS codul PIN al membrilor noi
+          </label>
+          <span class="field-hint">
+            Oprit: recepția vede codul PIN și i-l comunică membrului. Pornit: PIN-ul pleacă prin SMS
+            (necesită contul SMSLink configurat pe server).
+          </span>
+        </div>
         <div class="form-footer">
           <button type="submit" class="btn btn-primary" [disabled]="saving() || !club.value()">
             {{ saving() ? 'Se salvează…' : 'Salvează' }}
@@ -114,6 +124,7 @@ export class AdminClubPage {
     email: ['', [Validators.email, Validators.maxLength(120)]],
     website: ['', Validators.maxLength(120)],
     timezone: ['Europe/Bucharest', Validators.required],
+    smsEnabled: [false],
   });
 
   constructor() {

@@ -60,6 +60,11 @@ export interface Club {
   website: string;
   /** IANA timezone, e.g. `Europe/Bucharest`. */
   timezone: string;
+  /**
+   * Text new member PINs by SMS (needs SMSLink configured on the server). Off: reception
+   * is shown the PIN and hands it over in person.
+   */
+  smsEnabled: boolean;
 }
 
 export type ClubInput = Club;
@@ -133,9 +138,11 @@ export interface MemberSummary {
   courses: CourseRef[];
   subscription: SubscriptionUsage | null;
   status: MemberStatus;
+  /** A member portal PIN has been issued (see `MemberAccessResult`). */
+  hasAccount: boolean;
 }
 
-export type CheckInMethod = 'rfid' | 'manual';
+export type CheckInMethod = 'rfid' | 'qr' | 'manual';
 
 export interface CheckInRecord {
   id: string;
@@ -173,6 +180,26 @@ export interface MemberInput {
 
 export interface NewMemberInput extends MemberInput {
   subscription: SubscriptionInput | null;
+}
+
+/** `POST /members` also issues the member's portal PIN and texts it to them. */
+export interface CreatedMember extends MemberSummary {
+  access: MemberAccessResult;
+}
+
+/**
+ * What happened to the PIN SMS: `sent` (accepted by the provider), `disabled` (SMS sending
+ * is off in the club settings) or `failed` (provider error or not configured; see the logs).
+ */
+export type PinSmsOutcome = 'sent' | 'disabled' | 'failed';
+
+/** Result of issuing a new member portal PIN (`POST /members/:id/access`). */
+export interface MemberAccessResult {
+  sms: PinSmsOutcome;
+  /** The member's phone, as stored (where the SMS went, or the login for the PIN). */
+  phone: string;
+  /** The generated 6-digit PIN, only when no SMS was sent: reception hands it over. */
+  temporaryPin: string | null;
 }
 
 export interface SubscriptionInput {
@@ -404,13 +431,22 @@ export interface KioskStatus {
   current: CurrentTraining | null;
 }
 
+/** Exactly one of: a card code, a member portal QR code (`MEMBER_QR_PREFIX…`), a member id. */
 export interface CheckInRequest {
   rfid?: string;
+  qr?: string;
   memberId?: string;
 }
 
 export type CheckInOutcome =
-  'allowed' | 'already-checked-in' | 'limit' | 'expired' | 'no-subscription' | 'unknown-card';
+  | 'allowed'
+  | 'already-checked-in'
+  | 'limit'
+  | 'expired'
+  | 'no-subscription'
+  | 'unknown-card'
+  /** The QR code is expired (it rotates every 30 s), forged or of a deleted member. */
+  | 'invalid-qr';
 
 export interface CheckInResult {
   outcome: CheckInOutcome;
@@ -420,6 +456,48 @@ export interface CheckInResult {
 
 export interface ApiError {
   message: string;
+}
+
+// ---- Member portal (`/api/account`, cookie `fa_member`, separate from staff sessions) ----
+
+/** Every member QR code starts with this, which tells the kiosk it is not an RFID card code. */
+export const MEMBER_QR_PREFIX = 'FA1.';
+
+export interface MemberLoginInput {
+  /** Any common format: `0722 123 456`, `+40722123456`… */
+  phone: string;
+  /** 4–6 digits: generated (6) and texted, or chosen by the member. */
+  pin: string;
+}
+
+/** What a signed-in member sees about themselves. */
+export interface MemberAccount {
+  id: string;
+  firstName: string;
+  fullName: string;
+  initials: string;
+  phone: string;
+  courses: CourseRef[];
+  subscription: SubscriptionUsage | null;
+  status: MemberStatus;
+  /** Most recent first. */
+  history: CheckInRecord[];
+}
+
+/** The member's current check-in QR code; fetch a new one before `expiresAt`. */
+export interface MemberQrCode {
+  /** The text to encode, `MEMBER_QR_PREFIX` + member id + time step + signature. */
+  token: string;
+  /** ISO timestamp after which the kiosk refuses it. */
+  expiresAt: string;
+  /** Suggested refresh interval in seconds. */
+  refreshSeconds: number;
+}
+
+export interface PinChangeInput {
+  currentPin: string;
+  /** 4–6 digits. */
+  newPin: string;
 }
 
 // ---- Reports ---------------------------------------------------------------------

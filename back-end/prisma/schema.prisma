@@ -19,6 +19,8 @@ enum PlanId {
 
 enum CheckInMethod {
   rfid
+  /// The rotating QR code from the member portal, scanned at the kiosk.
+  qr
   manual
 }
 
@@ -65,6 +67,20 @@ model Session {
   @@map("sessions")
 }
 
+/// A member portal session (cookie `fa_member`), separate from staff sessions.
+model MemberSession {
+  /// SHA-256 of the cookie token; the token itself is never stored.
+  id        String   @id
+  memberId  String   @map("member_id")
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+
+  @@index([memberId])
+  @@index([expiresAt])
+  @@map("member_sessions")
+}
+
 /// The club's details; a single row with id 1.
 model Club {
   id        Int      @id @default(1)
@@ -75,6 +91,8 @@ model Club {
   website   String
   /// IANA timezone for "today", training times and check-in dates.
   timezone  String
+  /// Text new member PINs by SMS (SMSLink). Off: reception hands the PIN over in person.
+  smsEnabled Boolean @default(false) @map("sms_enabled")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("club")
@@ -142,6 +160,10 @@ model Member {
   joinedAt     DateTime             @map("joined_at") @db.Date
   /// GDPR consent to store a photo (for minors: a parent's consent). Required for `photo`.
   photoConsent Boolean              @default(false) @map("photo_consent")
+  /// Member portal password (generated and sent by SMS); null until one is issued.
+  passwordHash String?              @map("password_hash")
+  /// HMAC key of the member's rotating QR code; created on first use.
+  qrSecret     String?              @map("qr_secret")
   createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   courses      MemberCourse[]
@@ -151,6 +173,7 @@ model Member {
   periods      SubscriptionPeriod[]
   payments     Payment[]
   refusedScans RefusedScan[]
+  sessions     MemberSession[]
 
   @@index([lastName, firstName])
   @@map("members")

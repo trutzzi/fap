@@ -1,0 +1,128 @@
+import { DatePipe, NgOptimizedImage } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  afterNextRender,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { MemberAccountService } from '../../core/account/member-account.service';
+import { PIN_PATTERN, digitsOnly } from '../../core/account/pin';
+import { CheckInRecord } from '../../core/api/models';
+import { createQuery, errorMessage } from '../../core/data/query';
+import { ToastService } from '../../core/ui/toast.service';
+import { WEEKDAYS_SHORT, formatDayMonth, isoWeekday, toIsoDate } from '../../core/util/dates';
+import { onInterval } from '../../core/util/interval';
+import { IsoDatePipe } from '../../shared/ui/formatting';
+import { QrCode } from '../../shared/ui/qr-code';
+import { SessionMeter } from '../../shared/ui/session-meter';
+import { StatusBadge } from '../../shared/ui/status-badge';
+
+/** The server rotates the code every 30 s; fetching a bit sooner keeps it always valid. */
+const QR_REFRESH_MS = 25_000;
+const ACCOUNT_REFRESH_MS = 60_000;
+
+/**
+ * Member portal home: the rotating check-in QR code (scanned by the kiosk tablet at the
+ * entrance), the current subscription and recent check-ins. Mobile first.
+ */
+@Component({
+  selector: 'app-account-page',
+  imports: [
+    DatePipe,
+    NgOptimizedImage,
+    ReactiveFormsModule,
+    IsoDatePipe,
+    QrCode,
+    SessionMeter,
+    StatusBadge,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './account-page.html',
+  styleUrl: './account-page.css',
+})
+export class AccountPage {
+  private readonly accounts = inject(MemberAccountService);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+
+  protected readonly account = this.accounts.account;
+  protected readonly qr = createQuery(
+    () => null,
+    () => this.accounts.qr(),
+  );
+
+  protected readonly savingPin = signal(false);
+  protected readonly pinSubmitted = signal(false);
+  protected readonly pinError = signal<string | null>(null);
+  protected readonly pinForm = inject(NonNullableFormBuilder).group({
+    currentPin: ['', [Validators.required, Validators.pattern(PIN_PATTERN)]],
+    newPin: ['', [Validators.required, Validators.pattern(PIN_PATTERN)]],
+  });
+
+  constructor() {
+    onInterval(QR_REFRESH_MS, () => this.qr.reload());
+    onInterval(ACCOUNT_REFRESH_MS, () => this.refresh());
+    // Phones pause timers in the background: refresh as soon as the page is shown again.
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') {
+          this.qr.reload();
+          this.refresh();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', onVisible));
+    });
+    // Signed out (logout, or reception issued a new PIN): back to the login.
+    effect(() => {
+      if (!this.account()) void this.router.navigate(['/cont/login']);
+    });
+  }
+
+  protected historyDate(record: CheckInRecord): string {
+    const iso = toIsoDate(new Date(record.timestamp));
+    return `${WEEKDAYS_SHORT[isoWeekday(iso) - 1]}, ${formatDayMonth(iso)}`;
+  }
+
+  protected pinInvalid(name: 'currentPin' | 'newPin'): boolean {
+    return this.pinSubmitted() && this.pinForm.controls[name].invalid;
+  }
+
+  protected onPinInput(name: 'currentPin' | 'newPin', input: HTMLInputElement): void {
+    const pin = digitsOnly(input.value);
+    if (pin !== input.value) this.pinForm.controls[name].setValue(pin);
+  }
+
+  protected changePin(): void {
+    this.pinSubmitted.set(true);
+    if (this.pinForm.invalid || this.savingPin()) return;
+    this.savingPin.set(true);
+    this.pinError.set(null);
+    this.accounts
+      .changePin(this.pinForm.getRawValue())
+      .pipe(finalize(() => this.savingPin.set(false)))
+      .subscribe({
+        next: () => {
+          this.toast.success('Codul PIN a fost schimbat.');
+          this.pinForm.reset();
+          this.pinSubmitted.set(false);
+        },
+        error: (err) => this.pinError.set(errorMessage(err)),
+      });
+  }
+
+  protected logout(): void {
+    this.accounts.logout().subscribe();
+  }
+
+  private refresh(): void {
+    this.accounts.load().subscribe();
+  }
+}

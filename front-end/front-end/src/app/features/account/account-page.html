@@ -1,0 +1,124 @@
+<main class="account">
+  <header class="top">
+    <span class="brand">
+      <img ngSrc="logo-fight-academy.png" width="43" height="40" alt="" priority />
+      <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
+    </span>
+    <button type="button" class="btn btn-ghost btn-sm" (click)="logout()">Ieșire</button>
+  </header>
+
+  @if (account(); as a) {
+    <section class="card pass" aria-labelledby="pass-title">
+      <h1 id="pass-title" class="hello">Salut, {{ a.firstName }}!</h1>
+      <p class="muted lead">Arată codul camerei tabletei de la intrare.</p>
+      <div class="qr">
+        @if (qr.value(); as code) {
+          <app-qr-code [text]="code.token" [label]="'Cod QR de acces pentru ' + a.fullName" />
+        } @else if (qr.error(); as message) {
+          <p class="state-message state-message--error">{{ message }}</p>
+        } @else {
+          <p class="state-message">Se încarcă codul…</p>
+        }
+      </div>
+      @if (qr.value() && qr.error(); as message) {
+        <p class="state-message state-message--error" role="alert">
+          Codul nu s-a putut actualiza. Verifică conexiunea la internet.
+        </p>
+      }
+      <p class="muted small">
+        Codul se schimbă automat la fiecare 30 de secunde, așa că o captură de ecran nu
+        funcționează. Mărește luminozitatea ecranului dacă nu este citit.
+      </p>
+      <div class="who">
+        <strong>{{ a.fullName }}</strong>
+        <app-status-badge [status]="a.status" />
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sub-title">
+      <h2 id="sub-title" class="section-title">Abonament</h2>
+      @if (a.subscription; as s) {
+        <p class="plan">{{ s.planName }}</p>
+        @if (s.sessionLimit !== null) {
+          <app-session-meter [used]="s.used" [limit]="s.sessionLimit" />
+          <p class="muted small">
+            {{ s.used }} din {{ s.sessionLimit }} ședințe folosite · mai ai {{ s.remaining }}
+          </p>
+        } @else {
+          <p class="muted small">{{ s.used }} prezențe în perioada curentă</p>
+        }
+        <p class="small">
+          {{ a.status === 'expired' ? 'A expirat pe' : 'Valabil până pe' }}
+          <strong>{{ s.endDate | isoDate }}</strong>
+        </p>
+      } @else {
+        <p class="muted">Nu ai un abonament activ. Treci pe la recepție.</p>
+      }
+    </section>
+
+    <section class="card" aria-labelledby="history-title">
+      <h2 id="history-title" class="section-title">Ultimele prezențe</h2>
+      <ul class="history">
+        @for (h of a.history; track h.id) {
+          <li>
+            <span>{{ historyDate(h) }}</span>
+            <span class="muted">{{ h.timestamp | date: 'HH:mm' }}</span>
+            <span class="training">{{ h.trainingLabel ?? 'Acces liber' }}</span>
+          </li>
+        } @empty {
+          <li class="muted">Nicio prezență încă.</li>
+        }
+      </ul>
+    </section>
+
+    <details class="card">
+      <summary class="section-title">Schimbă codul PIN</summary>
+      <form class="form" [formGroup]="pinForm" (ngSubmit)="changePin()" novalidate>
+        @if (pinError(); as message) {
+          <div class="form-error" role="alert">{{ message }}</div>
+        }
+        <div class="field">
+          <label for="current-pin">PIN actual</label>
+          <input
+            #currentPin
+            id="current-pin"
+            class="input"
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            formControlName="currentPin"
+            autocomplete="current-password"
+            [attr.aria-invalid]="pinInvalid('currentPin')"
+            (input)="onPinInput('currentPin', currentPin)"
+          />
+          @if (pinInvalid('currentPin')) {
+            <span class="field-error">Introdu PIN-ul actual.</span>
+          }
+        </div>
+        <div class="field">
+          <label for="new-pin">PIN nou</label>
+          <input
+            #newPin
+            id="new-pin"
+            class="input"
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            formControlName="newPin"
+            autocomplete="new-password"
+            [attr.aria-invalid]="pinInvalid('newPin')"
+            (input)="onPinInput('newPin', newPin)"
+          />
+          <span class="field-hint" [class.field-error]="pinInvalid('newPin')">
+            4–6 cifre, ușor de ținut minte.
+          </span>
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="savingPin()">
+          {{ savingPin() ? 'Se salvează…' : 'Salvează PIN-ul' }}
+        </button>
+      </form>
+    </details>
+  }
+</main>

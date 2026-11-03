@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { memberGuard, memberGuestGuard } from './core/account/member-account.guards';
 import { adminGuard, authGuard, guestGuard, staffGuard } from './core/auth/auth.guards';
 import { Shell } from './layout/shell';
 
@@ -8,6 +9,21 @@ export const routes: Routes = [
     title: 'Autentificare · FightAcademy',
     canActivate: [guestGuard],
     loadComponent: () => import('./features/login/login-page').then((m) => m.LoginPage),
+  },
+  // Member portal: members sign in with their phone and show their check-in QR code.
+  // Separate from the staff app (own session), so it sits outside the staff guards.
+  {
+    path: 'cont/login',
+    title: 'Cont membru · FightAcademy',
+    canActivate: [memberGuestGuard],
+    loadComponent: () =>
+      import('./features/account/account-login-page').then((m) => m.AccountLoginPage),
+  },
+  {
+    path: 'cont',
+    title: 'Contul meu · FightAcademy',
+    canActivate: [memberGuard],
+    loadComponent: () => import('./features/account/account-page').then((m) => m.AccountPage),
   },
   {
     path: 'kiosk',

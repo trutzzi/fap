@@ -79,6 +79,10 @@ const SLOTS: SlotSeed[] = [
   ['kar', 7, '11:30', 16, 'Karate · Avansați'],
 ];
 
+/** The member with a portal PIN in the mock (see CLAUDE.md). */
+const DEMO_MEMBER_RFID = '04A391F2';
+export const DEMO_MEMBER_PIN = '123456';
+
 interface MemberSeed {
   first: string;
   last: string;
@@ -362,6 +366,9 @@ export function seed(now = new Date()): Db {
       subscription: s.plan ? { planId: s.plan, startDate: addDays(today, s.startOffset) } : null,
       photoConsent: false,
       photo: null,
+      // Demo member portal account (`/cont`): Andrei Popescu, 0722 513 418 / PIN 123456.
+      pin: s.rfid === DEMO_MEMBER_RFID ? DEMO_MEMBER_PIN : null,
+      qrSecret: null,
     };
     members.push(member);
     if (!member.subscription) continue;

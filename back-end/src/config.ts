@@ -15,6 +15,21 @@ const schema = z.object({
     .string()
     .default('loopback')
     .transform((v) => (/^\d+$/.test(v) ? Number(v) : v)),
+  /** Public address of the app; the password SMS links to `<PUBLIC_URL>/cont`. */
+  PUBLIC_URL: z
+    .url()
+    .default('http://localhost:4200')
+    .transform((v) => v.replace(/\/+$/, '')),
+  /** SMSLink.ro gateway (SMS with member passwords). Without both, SMS are only logged. */
+  SMSLINK_CONNECTION_ID: z.string().default(''),
+  SMSLINK_PASSWORD: z.string().default(''),
+  /** Sender name approved by SMSLink; empty uses their numeric short number. */
+  SMSLINK_SENDER: z.string().default(''),
+  /** `true`: SMSLink validates requests but sends nothing. */
+  SMSLINK_TEST: z
+    .enum(['true', 'false', ''])
+    .default('')
+    .transform((v) => v === 'true'),
 });
 
 export type Config = z.infer<typeof schema>;

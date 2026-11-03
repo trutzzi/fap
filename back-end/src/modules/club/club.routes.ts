@@ -15,13 +15,14 @@ export const DEFAULT_CLUB: Club = {
   email: '',
   website: '',
   timezone: 'Europe/Bucharest',
+  smsEnabled: false,
 };
 
 export async function loadClub(db: Db, defaults: Club = DEFAULT_CLUB): Promise<Club> {
   const row = await db.club.findUnique({ where: { id: CLUB_ID } });
   if (!row) return defaults;
-  const { name, address, phone, email, website, timezone } = row;
-  return { name, address, phone, email, website, timezone };
+  const { name, address, phone, email, website, timezone, smsEnabled } = row;
+  return { name, address, phone, email, website, timezone, smsEnabled };
 }
 
 /**

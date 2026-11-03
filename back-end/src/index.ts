@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db.js';
 import { systemClock } from './lib/clock.js';
+import { logSmsSender, smsLinkSender } from './lib/sms.js';
 import { DEFAULT_CLUB, applyTimezone, loadClub } from './modules/club/club.routes.js';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
@@ -18,7 +19,26 @@ const logger = pino({
 });
 const db = createDb(config.DATABASE_URL);
 applyTimezone(await loadClub(db, { ...DEFAULT_CLUB, timezone: config.APP_TIMEZONE }));
-const app = createApp({ db, clock: systemClock, logger, trustProxy: config.TRUST_PROXY });
+const sms =
+  config.SMSLINK_CONNECTION_ID && config.SMSLINK_PASSWORD
+    ? smsLinkSender({
+        connectionId: config.SMSLINK_CONNECTION_ID,
+        password: config.SMSLINK_PASSWORD,
+        sender: config.SMSLINK_SENDER,
+        test: config.SMSLINK_TEST,
+      })
+    : logSmsSender(logger);
+if (config.NODE_ENV === 'production' && !config.SMSLINK_CONNECTION_ID) {
+  logger.warn('SMSLINK_* is not set: member passwords are shown to reception instead of texted');
+}
+const app = createApp({
+  db,
+  clock: systemClock,
+  sms,
+  publicUrl: config.PUBLIC_URL,
+  logger,
+  trustProxy: config.TRUST_PROXY,
+});
 
 const server = app.listen(config.PORT, (error) => {
   if (error) throw error;

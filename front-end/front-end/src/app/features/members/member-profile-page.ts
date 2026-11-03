@@ -11,10 +11,13 @@ import {
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
+import { tap } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
 import {
+  CheckInMethod,
   CheckInRecord,
+  MemberAccessResult,
   PeriodPaymentStatus,
   PlanId,
   SubscriptionPeriod,
@@ -34,6 +37,7 @@ import {
   toMonth,
 } from '../../core/util/dates';
 import { ConfirmDialog } from '../../shared/dialogs/confirm-dialog';
+import { MemberAccessDialog } from '../../shared/dialogs/member-access-dialog';
 import { MemberFormDialog } from '../../shared/dialogs/member-form-dialog';
 import { PhotoDialog } from '../../shared/dialogs/photo-dialog';
 import { PaymentDialog } from '../../shared/dialogs/payment-dialog';
@@ -45,7 +49,14 @@ import { MemberAvatar } from '../../shared/ui/member-avatar';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
-type ProfileDialog = 'edit' | 'photo' | 'payment' | 'rfid' | 'renew' | 'change' | 'delete';
+type ProfileDialog =
+  'edit' | 'photo' | 'payment' | 'rfid' | 'access' | 'renew' | 'change' | 'delete';
+
+const METHOD_LABELS: Record<CheckInMethod, string> = {
+  rfid: 'Card RFID',
+  qr: 'Cod QR',
+  manual: 'Manual · recepție',
+};
 
 const PERIOD_BADGE: Record<PeriodPaymentStatus, { label: string; tone: string }> = {
   paid: { label: 'Plătit', tone: 'badge--success' },
@@ -77,6 +88,7 @@ interface CalendarCell {
     ConfirmDialog,
     PhotoDialog,
     PaymentDialog,
+    MemberAccessDialog,
     MemberAvatar,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -105,6 +117,16 @@ export class MemberProfilePage {
   protected readonly upgradePlan = signal<PlanId | null>(null);
   protected readonly paying = signal<SubscriptionPeriod | null>(null);
   protected readonly periodBadge = PERIOD_BADGE;
+  protected readonly methodLabels = METHOD_LABELS;
+  /** Result of the last "send password" action, shown in a dialog. */
+  protected readonly accessResult = signal<MemberAccessResult | null>(null);
+
+  /** Whether new PINs go out by SMS (club settings); changes the wording only. */
+  protected readonly smsEnabled = computed(() => this.club.value()?.smsEnabled ?? false);
+  private readonly club = createQuery(
+    () => null,
+    () => this.academy.club(),
+  );
 
   protected readonly member = createQuery(
     () => this.id(),
@@ -156,6 +178,8 @@ export class MemberProfilePage {
   });
 
   protected readonly deleteAction = () => this.membersApi.delete(this.id());
+  protected readonly accessAction = () =>
+    this.membersApi.sendAccess(this.id()).pipe(tap((result) => this.accessResult.set(result)));
 
   constructor() {
     const title = inject(Title);

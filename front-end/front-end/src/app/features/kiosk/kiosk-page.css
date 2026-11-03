@@ -234,3 +234,7 @@ strong {
     font-size: 36px;
   }
 }
+
+.camera {
+  width: min(340px, 100%);
+}

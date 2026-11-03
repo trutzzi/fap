@@ -7,6 +7,7 @@ import {
   CurrentTraining,
   Dashboard,
   MemberAttendance,
+  MemberAccount,
   MemberDetail,
   MemberFilter,
   MemberStatus,
@@ -121,6 +122,24 @@ export class Views {
       courses: member.courseIds.map((id) => this.courseRef(id)).filter((c) => c !== null),
       subscription,
       status: this.status(subscription),
+      hasAccount: member.pin !== null,
+    };
+  }
+
+  /** The member portal's view of a member: only their own, non-staff data. */
+  account(member: MemberEntity): MemberAccount {
+    const { id, firstName, fullName, initials, phone, courses, subscription, status } =
+      this.summary(member);
+    return {
+      id,
+      firstName,
+      fullName,
+      initials,
+      phone,
+      courses,
+      subscription,
+      status,
+      history: this.history(member, 10),
     };
   }
 

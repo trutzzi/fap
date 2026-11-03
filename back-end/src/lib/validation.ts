@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { MemberFilter } from '../contract/models.js';
+import { MEMBER_PIN_PATTERN } from '../domain/member-access.js';
 import { isIsoDate } from './dates.js';
 import { badRequest } from './http-error.js';
 
@@ -142,6 +143,23 @@ export const loginSchema = z.object({
   password: z.string('Introdu parola.').min(1, 'Introdu parola.').max(200),
 });
 
+const pin = (missing: string) =>
+  z.string(missing).trim().min(1, missing).regex(MEMBER_PIN_PATTERN, 'PIN-ul are 4–6 cifre.');
+
+export const memberLoginSchema = z.object({
+  phone: z
+    .string('Introdu numărul de telefon.')
+    .trim()
+    .min(1, 'Introdu numărul de telefon.')
+    .max(30, 'Numărul de telefon este invalid.'),
+  pin: pin('Introdu codul PIN.'),
+});
+
+export const pinChangeSchema = z.object({
+  currentPin: pin('Introdu PIN-ul actual.'),
+  newPin: pin('Introdu PIN-ul nou.'),
+});
+
 const isTimezone = (tz: string) => Intl.supportedValuesOf('timeZone').includes(tz);
 
 export const clubSchema = z.object({
@@ -156,11 +174,16 @@ export const clubSchema = z.object({
     .default(''),
   website: z.string().trim().max(120, 'Adresa site-ului este prea lungă.').default(''),
   timezone: z.string('Fusul orar este invalid.').refine(isTimezone, 'Fusul orar este invalid.'),
+  smsEnabled: z.boolean('Opțiunea pentru SMS este invalidă.').default(false),
 });
 
 export const checkInSchema = z
-  .object({ rfid: z.string().trim().optional(), memberId: z.string().optional() })
-  .refine((v) => v.rfid || v.memberId, 'Trimite un card RFID sau un membru.');
+  .object({
+    rfid: z.string().trim().optional(),
+    qr: z.string().trim().max(200).optional(),
+    memberId: z.string().optional(),
+  })
+  .refine((v) => v.rfid || v.qr || v.memberId, 'Trimite un card RFID, un cod QR sau un membru.');
 
 const MEMBER_FILTERS = [
   'all',

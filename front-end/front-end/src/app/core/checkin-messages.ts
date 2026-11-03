@@ -63,5 +63,12 @@ export function checkInMessage(result: CheckInResult): CheckInMessage {
         headline: 'Card necunoscut',
         footer: 'Cardul nu este alocat niciunui membru. Te rugăm să mergi la recepție.',
       };
+    case 'invalid-qr':
+      return {
+        tone: 'danger',
+        headline: 'Cod QR expirat',
+        footer:
+          'Codul nu mai este valabil. Redeschide contul de membru pe telefon și arată codul nou.',
+      };
   }
 }

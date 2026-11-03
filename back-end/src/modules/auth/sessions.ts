@@ -7,7 +7,7 @@ export const SESSION_COOKIE = 'fa_session';
 /** Sessions last 14 days and are extended on use once less than half remains. */
 const SESSION_TTL_MS = 14 * 24 * 3_600_000;
 
-const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export async function createSession(
   db: Db,
@@ -50,16 +50,22 @@ export async function pruneSessions(db: Db, now: Date): Promise<void> {
   await db.session.deleteMany({ where: { expiresAt: { lte: now } } });
 }
 
-export function readSessionToken(req: Request): string | null {
+/** Staff sessions use `fa_session`; member portal sessions use `fa_member` (account module). */
+export function readSessionToken(req: Request, cookie = SESSION_COOKIE): string | null {
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const [name, ...value] = part.trim().split('=');
-    if (name === SESSION_COOKIE) return decodeURIComponent(value.join('=')) || null;
+    if (name === cookie) return decodeURIComponent(value.join('=')) || null;
   }
   return null;
 }
 
-export function setSessionCookie(res: Response, token: string, expires: Date): void {
-  res.cookie(SESSION_COOKIE, token, {
+export function setSessionCookie(
+  res: Response,
+  token: string,
+  expires: Date,
+  cookie = SESSION_COOKIE,
+): void {
+  res.cookie(cookie, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env['NODE_ENV'] === 'production',
@@ -68,6 +74,6 @@ export function setSessionCookie(res: Response, token: string, expires: Date): v
   });
 }
 
-export function clearSessionCookie(res: Response): void {
-  res.clearCookie(SESSION_COOKIE, { path: '/' });
+export function clearSessionCookie(res: Response, cookie = SESSION_COOKIE): void {
+  res.clearCookie(cookie, { path: '/' });
 }

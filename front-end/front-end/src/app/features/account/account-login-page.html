@@ -1,0 +1,63 @@
+<main class="login">
+  <section class="panel" aria-labelledby="login-title">
+    <div class="brand">
+      <img ngSrc="logo-fight-academy.png" width="78" height="73" alt="" priority />
+      <span class="brand-name"><span>FIGHT </span><span class="accent">ACADEMY</span></span>
+      @if (club.value(); as c) {
+        <span class="muted club">{{ c.name }}</span>
+      }
+    </div>
+
+    <h1 id="login-title" class="title">Cont membru</h1>
+
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (error(); as message) {
+        <div class="form-error" role="alert">{{ message }}</div>
+      }
+      <div class="field">
+        <label for="member-phone">Număr de telefon</label>
+        <input
+          id="member-phone"
+          class="input"
+          type="tel"
+          inputmode="tel"
+          formControlName="phone"
+          autocomplete="tel"
+          placeholder="07xx xxx xxx"
+          autofocus
+          [attr.aria-invalid]="invalid('phone')"
+        />
+        @if (invalid('phone')) {
+          <span class="field-error">Introdu numărul de telefon dat la înscriere.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="member-pin">Cod PIN</label>
+        <input
+          #pin
+          id="member-pin"
+          class="input"
+          type="password"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="6"
+          formControlName="pin"
+          autocomplete="current-password"
+          [attr.aria-invalid]="invalid('pin')"
+          (input)="onPinInput(pin)"
+        />
+        @if (invalid('pin')) {
+          <span class="field-error">Introdu codul PIN de 4–6 cifre.</span>
+        }
+      </div>
+      <button type="submit" class="btn btn-primary submit" [disabled]="submitting()">
+        {{ submitting() ? 'Se verifică…' : 'Intră în cont' }}
+      </button>
+    </form>
+
+    <p class="muted note">
+      Codul PIN îl primești la înscriere. L-ai uitat? Cere unul nou la recepție.
+    </p>
+    <p class="note"><a routerLink="/login">Autentificare personal club</a></p>
+  </section>
+</main>

@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { SESSION_COOKIE, createSession } from '../src/modules/auth/sessions.js';
-import { USERS, db, resetData } from './helpers.js';
+import { PUBLIC_URL, USERS, db, resetData, testSms } from './helpers.js';
 
 beforeEach(resetData);
 afterAll(async () => {
@@ -20,7 +20,13 @@ describe('request logging', () => {
         done();
       },
     });
-    const app = createApp({ db, clock: () => new Date(2026, 9, 14, 19, 45), logger: pino(sink) });
+    const app = createApp({
+      db,
+      clock: () => new Date(2026, 9, 14, 19, 45),
+      sms: testSms,
+      publicUrl: PUBLIC_URL,
+      logger: pino(sink),
+    });
     const { token } = await createSession(db, USERS.admin.id, new Date(2026, 9, 14, 19, 45));
 
     await request(app)

@@ -47,5 +47,8 @@ describe('checkInMessage', () => {
     expect(
       checkInMessage({ outcome: 'unknown-card', member: null, trainingLabel: null }).headline,
     ).toBe('Card necunoscut');
+    expect(
+      checkInMessage({ outcome: 'invalid-qr', member: null, trainingLabel: null }),
+    ).toMatchObject({ tone: 'danger', headline: 'Cod QR expirat' });
   });
 });

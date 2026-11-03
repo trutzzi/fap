@@ -46,6 +46,15 @@
           {{ m.rfid ? 'Schimbă cardul' : 'Alocă un card' }}
         </button>
       </div>
+      <div class="rfid">
+        <span class="label-caps">Cont membru · cod QR</span>
+        <span class="rfid-code">{{ m.hasAccount ? 'Activ' : 'Fără PIN' }}</span>
+        <button type="button" class="link-btn" (click)="dialog.set('access')">
+          {{
+            m.hasAccount ? 'PIN nou' : smsEnabled() ? 'Trimite PIN-ul prin SMS' : 'Generează PIN'
+          }}
+        </button>
+      </div>
       <div class="actions profile-actions">
         <button type="button" class="btn btn-sm" (click)="checkIn()">Check-in manual</button>
         <button type="button" class="btn btn-sm" (click)="dialog.set('edit')">
@@ -220,9 +229,7 @@
               <span class="h-date">{{ historyDate(h) }}</span>
               <span class="h-time muted">{{ h.timestamp | date: 'HH:mm' }}</span>
               <span class="h-training">{{ h.trainingLabel ?? 'Acces liber' }}</span>
-              <span class="muted">{{
-                h.method === 'rfid' ? 'Card RFID' : 'Manual · recepție'
-              }}</span>
+              <span class="muted">{{ methodLabels[h.method] }}</span>
               <span class="h-count">
                 {{
                   h.sessionNumber !== null && h.sessionLimit !== null
@@ -289,6 +296,29 @@
           (closed)="dialog.set(null)"
         />
       }
+      @case ('access') {
+        <app-confirm-dialog
+          heading="Cont membru"
+          [message]="
+            m.hasAccount
+              ? (smsEnabled()
+                  ? 'Trimiți un cod PIN nou prin SMS la ' + m.phone + '?'
+                  : 'Generezi un cod PIN nou?') +
+                ' PIN-ul vechi nu va mai funcționa, iar membrul va fi deconectat din cont.'
+              : (smsEnabled()
+                  ? 'Trimiți prin SMS la ' + m.phone + ' codul PIN'
+                  : 'Generezi codul PIN') +
+                ' pentru contul de membru, de unde își va lua codul QR de acces?'
+          "
+          [confirmLabel]="smsEnabled() ? 'Trimite PIN-ul' : 'Generează PIN'"
+          [action]="accessAction"
+          (done)="refresh()"
+          (closed)="dialog.set(null)"
+        />
+      }
+    }
+    @if (accessResult(); as result) {
+      <app-member-access-dialog [result]="result" (closed)="accessResult.set(null)" />
     }
   } @else if (member.error(); as message) {
     <div class="card state-message state-message--error" role="alert">{{ message }}</div>

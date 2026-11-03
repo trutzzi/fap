@@ -3,6 +3,7 @@ import type { CheckInOutcome, CheckInResult, KioskStatus } from '../../contract/
 import { toDbDate } from '../../db.js';
 import type { RefusalReason } from '../../generated/prisma/client.js';
 import type { Deps } from '../../deps.js';
+import { parseQrToken, verifyQrToken } from '../../domain/member-access.js';
 import { normalizeRfid } from '../../domain/membership.js';
 import { currentSlot } from '../../domain/schedule.js';
 import { isoWeekday, toIsoDate } from '../../lib/dates.js';
@@ -13,7 +14,7 @@ import { loadSummary } from '../members/member-queries.js';
 /** Without a matching training, a repeat check-in within this window counts as a duplicate. */
 const DUPLICATE_WINDOW_MS = 2 * 3_600_000;
 
-/** Kiosk status and check-in (card scan or manual at reception). */
+/** Kiosk status and check-in (card scan, member QR code, or manual at reception). */
 export function checkInsRouter({ db, clock }: Deps): Router {
   const router = Router();
 
@@ -41,12 +42,31 @@ export function checkInsRouter({ db, clock }: Deps): Router {
 
   router.post('/checkins', async (req, res) => {
     const input = parse(checkInSchema, req.body);
+    const method = input.rfid ? 'rfid' : input.qr ? 'qr' : 'manual';
+
+    if (input.qr) {
+      const claimed = parseQrToken(input.qr);
+      const owner = claimed
+        ? await db.member.findUnique({
+            where: { id: claimed.memberId },
+            select: { qrSecret: true },
+          })
+        : null;
+      if (!owner?.qrSecret || !verifyQrToken(input.qr, owner.qrSecret, clock())) {
+        const body: CheckInResult = { outcome: 'invalid-qr', member: null, trainingLabel: null };
+        res.json(body);
+        return;
+      }
+    }
     const memberRow = input.rfid
       ? await db.member.findUnique({
           where: { rfid: normalizeRfid(input.rfid) },
           select: { id: true },
         })
-      : await db.member.findUnique({ where: { id: input.memberId! }, select: { id: true } });
+      : await db.member.findUnique({
+          where: { id: input.qr ? parseQrToken(input.qr)!.memberId : input.memberId! },
+          select: { id: true },
+        });
     if (!memberRow) {
       if (!input.rfid) throw notFound('Membrul nu a fost găsit.');
       const body: CheckInResult = { outcome: 'unknown-card', member: null, trainingLabel: null };
@@ -101,7 +121,7 @@ export function checkInsRouter({ db, clock }: Deps): Router {
           trainingLabel,
           date: toDbDate(today),
           timestamp: now,
-          method: input.rfid ? 'rfid' : 'manual',
+          method,
         },
       });
       return { ...reply('allowed'), member: (await loadSummary(tx, member.id, today))! };

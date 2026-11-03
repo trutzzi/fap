@@ -13,6 +13,16 @@
           <strong>Niciun antrenament acum</strong>
         }
       </div>
+      @if (cameraSupported()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon sound"
+          [attr.aria-pressed]="cameraOn()"
+          (click)="toggleCamera()"
+        >
+          {{ cameraOn() ? 'Cameră QR pornită' : 'Cameră QR oprită' }}
+        </button>
+      }
       <button
         type="button"
         class="btn btn-ghost btn-icon sound"
@@ -28,16 +38,26 @@
 
   <div class="panels">
     <section class="panel scan" aria-labelledby="scan-title">
-      <div class="rings" [class.busy]="busy()">
-        <div class="ring-inner">
-          <app-icon name="card" [size]="72" [strokeWidth]="1.6" />
+      @if (showCamera()) {
+        <app-qr-camera class="camera" (scanned)="submit({ qr: $event })" />
+        <div>
+          <h1 id="scan-title" class="scan-title display">Card sau cod QR</h1>
+          <p class="muted scan-hint">
+            Apropie cardul de cititor sau arată camerei codul QR din contul de membru
+          </p>
         </div>
-      </div>
-      <div>
-        <h1 id="scan-title" class="scan-title display">Apropie cardul</h1>
-        <p class="muted scan-hint">de cititorul de sub ecran pentru check-in</p>
-      </div>
-      <label class="visually-hidden" for="rfid-reader">Cod card RFID</label>
+      } @else {
+        <div class="rings" [class.busy]="busy()">
+          <div class="ring-inner">
+            <app-icon name="card" [size]="72" [strokeWidth]="1.6" />
+          </div>
+        </div>
+        <div>
+          <h1 id="scan-title" class="scan-title display">Apropie cardul</h1>
+          <p class="muted scan-hint">de cititorul de sub ecran pentru check-in</p>
+        </div>
+      }
+      <label class="visually-hidden" for="rfid-reader">Cod card RFID sau cod QR</label>
       <input
         #reader
         id="rfid-reader"
@@ -117,7 +137,10 @@
         <p class="footer">{{ message }}</p>
       } @else {
         <h2 class="result-title idle-title">Bine ai venit!</h2>
-        <p class="muted line">Apropie cardul de cititor. Rezultatul check-in-ului apare aici.</p>
+        <p class="muted line">
+          {{ showCamera() ? 'Apropie cardul sau arată codul QR.' : 'Apropie cardul de cititor.' }}
+          Rezultatul check-in-ului apare aici.
+        </p>
       }
     </section>
   </div>

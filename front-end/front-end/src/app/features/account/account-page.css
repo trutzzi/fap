@@ -1,0 +1,102 @@
+.account {
+  min-height: 100vh;
+  width: min(480px, 100%);
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-name {
+  font: 700 18px var(--font-display);
+  letter-spacing: 1px;
+  color: var(--text-strong);
+}
+.accent {
+  color: var(--accent);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pass {
+  align-items: center;
+  text-align: center;
+}
+.hello {
+  margin: 0;
+  font: 700 26px var(--font-display);
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+.lead {
+  margin: 0;
+}
+.qr {
+  width: min(300px, 100%);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+.qr app-qr-code {
+  width: 100%;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.small {
+  margin: 0;
+  font-size: 13px;
+}
+.plan {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history li {
+  display: grid;
+  grid-template-columns: 7.5em 3.5em 1fr;
+  gap: 8px;
+  font-size: 14px;
+}
+.training {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+summary {
+  cursor: pointer;
+}
+details[open] summary {
+  margin-bottom: 12px;
+}

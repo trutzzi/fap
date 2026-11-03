@@ -4,6 +4,9 @@ import {
   LogsSummary,
   CheckInResult,
   Club,
+  CreatedMember,
+  MemberAccessResult,
+  MemberQrCode,
   CourseInput,
   MemberFilter,
   MemberInput,
@@ -19,6 +22,17 @@ import { DEMO_USERS, MockSessions } from './auth';
 import { MockFinance } from './finance';
 import { MockReports } from './reports';
 import { Db, MemberEntity, nextId, normalizeRfid } from './db';
+import {
+  MockMemberSessions,
+  QR_STEP_MS,
+  PIN_PATTERN,
+  generateMemberPin,
+  newQrSecret,
+  phoneKey,
+  qrMemberId,
+  qrToken,
+  verifyQrToken,
+} from './member-access';
 import { seed } from './seed';
 import { Views } from './views';
 
@@ -96,6 +110,7 @@ export function createMockApi(db: Db = seed()): express.Router {
   const finance = new MockFinance(db, views);
   const reports = new MockReports(db, views);
   const sessions = new MockSessions();
+  const memberSessions = new MockMemberSessions();
   let club: Club = {
     name: 'Fight Academy Pitești',
     address: 'Str. Constantin Brâncoveanu, Pitești',
@@ -103,6 +118,7 @@ export function createMockApi(db: Db = seed()): express.Router {
     email: '',
     website: 'fightacademy.ro',
     timezone: 'Europe/Bucharest',
+    smsEnabled: false,
   };
   const api = express.Router();
   api.use(express.json());
@@ -139,35 +155,87 @@ export function createMockApi(db: Db = seed()): express.Router {
     res.json(club);
   });
 
-  api.use((req, _res, next) => {
-    next(sessions.user(req) ? undefined : new HttpError(401, 'Autentifică-te pentru a continua.'));
+  // ---- Member portal (own cookie `fa_member`; it never opens the staff API) ----
+
+  /**
+   * New portal PIN, unique among members sharing the phone. The mock has no SMS provider:
+   * with SMS on in the club settings it reports a failure, as an unconfigured server does.
+   */
+  const issueAccess = (member: MemberEntity): MemberAccessResult => {
+    let pin = generateMemberPin();
+    while (pinTakenOnPhone(member, pin)) pin = generateMemberPin();
+    member.pin = pin;
+    memberSessions.endAll(member.id);
+    return { sms: club.smsEnabled ? 'failed' : 'disabled', phone: member.phone, temporaryPin: pin };
+  };
+
+  /** Siblings sharing a phone can't share a PIN: it decides who signs in. */
+  const pinTakenOnPhone = (member: MemberEntity, pin: string) =>
+    db.members.some(
+      (m) => m !== member && m.pin === pin && phoneKey(m.phone) === phoneKey(member.phone),
+    );
+
+  const portalMember = (req: Request): MemberEntity => {
+    const id = memberSessions.memberId(req);
+    const member = id ? db.members.find((m) => m.id === id) : undefined;
+    if (!member) throw new HttpError(401, 'Autentifică-te pentru a continua.');
+    return member;
+  };
+
+  api.post('/account/login', (req, res) => {
+    const b = (req.body ?? {}) as Body;
+    const phone = typeof b['phone'] === 'string' ? b['phone'].trim() : '';
+    const pin = typeof b['pin'] === 'string' ? b['pin'].trim() : '';
+    if (!phone) throw badRequest('Introdu numărul de telefon.');
+    if (!pin) throw badRequest('Introdu codul PIN.');
+    if (!PIN_PATTERN.test(pin)) throw badRequest('PIN-ul are 4–6 cifre.');
+    // Phones are not unique (siblings): the PIN picks the member.
+    const member = db.members.find(
+      (m) => m.pin !== null && m.pin === pin && phoneKey(m.phone) === phoneKey(phone),
+    );
+    if (!member) throw new HttpError(401, 'Număr de telefon sau PIN greșit.');
+    memberSessions.start(res, member.id);
+    res.json(views.account(member));
   });
 
-  // Coaches: read-only views of their classes, the schedule, and check-in (as the back-end).
-  const coachAllowed: [string, RegExp][] = [
-    ['GET', /^\/trainings\/today$/],
-    ['GET', /^\/members\/[^/]+\/photo$/],
-    ['GET', /^\/schedule$/],
-    ['GET', /^\/courses$/],
-    ['GET', /^\/slots$/],
-    ['GET', /^\/kiosk\/status$/],
-    ['POST', /^\/checkins$/],
-  ];
-  api.use((req, _res, next) => {
-    const ok =
-      sessions.user(req)?.role !== 'coach' ||
-      coachAllowed.some(([method, path]) => method === req.method && path.test(req.path));
-    next(ok ? undefined : new HttpError(403, 'Nu ai drepturi pentru această acțiune.'));
+  api.post('/account/logout', (req, res) => {
+    memberSessions.end(req, res);
+    res.status(204).end();
   });
 
-  api.get('/trainings/today', (req, res) => {
-    const user = sessions.user(req)!;
-    res.json(views.trainingsToday(user.role === 'coach' ? user.id : undefined));
+  api.get('/account', (req, res) => {
+    res.json(views.account(portalMember(req)));
   });
 
-  api.get('/users/coaches', (req, res) => {
-    assertAdmin(req);
-    res.json(DEMO_USERS.filter((u) => u.role === 'coach').map(({ id, name }) => ({ id, name })));
+  api.get('/account/qr', (req, res) => {
+    const member = portalMember(req);
+    member.qrSecret ??= newQrSecret();
+    const { token, expiresAt } = qrToken(member.id, member.qrSecret, new Date());
+    const body: MemberQrCode = {
+      token,
+      expiresAt: expiresAt.toISOString(),
+      refreshSeconds: QR_STEP_MS / 1000,
+    };
+    res.set('Cache-Control', 'no-store').json(body);
+  });
+
+  api.put('/account/pin', (req, res) => {
+    const member = portalMember(req);
+    const b = (req.body ?? {}) as Body;
+    const current = typeof b['currentPin'] === 'string' ? b['currentPin'].trim() : '';
+    const next = typeof b['newPin'] === 'string' ? b['newPin'].trim() : '';
+    if (!current) throw badRequest('Introdu PIN-ul actual.');
+    if (!next) throw badRequest('Introdu PIN-ul nou.');
+    if (!PIN_PATTERN.test(current) || !PIN_PATTERN.test(next)) {
+      throw badRequest('PIN-ul are 4–6 cifre.');
+    }
+    if (current !== member.pin) throw badRequest('PIN-ul actual este greșit.');
+    if (pinTakenOnPhone(member, next)) {
+      throw badRequest('Acest PIN nu poate fi folosit. Alege altul.');
+    }
+    member.pin = next;
+    memberSessions.endAll(member.id, req);
+    res.status(204).end();
   });
 
   // ---- Member photos ----
@@ -235,6 +303,7 @@ export function createMockApi(db: Db = seed()): express.Router {
       email: text(b, 'email', 'Emailul', { required: false, max: 120 }),
       website: text(b, 'website', 'Site-ul', { required: false, max: 120 }),
       timezone,
+      smsEnabled: b['smsEnabled'] === true,
     };
     res.json(club);
   });
@@ -439,10 +508,14 @@ export function createMockApi(db: Db = seed()): express.Router {
       joinedAt: toIsoDate(new Date()),
       subscription: null,
       photo: null,
+      pin: null,
+      qrSecret: null,
     };
     db.members.push(member);
     if (sub) finance.sell(member.id, parseSubscription(sub), sessions.user(req)!.name);
-    res.status(201).json(views.summary(member));
+    const access = issueAccess(member);
+    const body: CreatedMember = { ...views.summary(member), access };
+    res.status(201).json(body);
   });
 
   api.get('/members/:id', (req, res) => {
@@ -523,6 +596,10 @@ export function createMockApi(db: Db = seed()): express.Router {
     res.json(views.summary(member));
   });
 
+  api.post('/members/:id/access', (req, res) => {
+    res.json(issueAccess(findMember(req.params['id'])));
+  });
+
   api.get('/members/:id/attendance', (req, res) => {
     const month = req.query['month'];
     const valid = typeof month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
@@ -543,12 +620,22 @@ export function createMockApi(db: Db = seed()): express.Router {
   api.post('/checkins', (req, res) => {
     const body = (req.body ?? {}) as Body;
     let member: MemberEntity | undefined;
-    if (typeof body['rfid'] === 'string' && body['rfid'].trim()) {
+    const qr = typeof body['qr'] === 'string' ? body['qr'].trim() : '';
+    if (qr) {
+      const claimed = qrMemberId(qr);
+      const owner = claimed ? db.members.find((m) => m.id === claimed) : undefined;
+      if (!owner?.qrSecret || !verifyQrToken(qr, owner.qrSecret, new Date())) {
+        const invalid: CheckInResult = { outcome: 'invalid-qr', member: null, trainingLabel: null };
+        res.json(invalid);
+        return;
+      }
+      member = owner;
+    } else if (typeof body['rfid'] === 'string' && body['rfid'].trim()) {
       member = db.members.find((m) => m.rfid === normalizeRfid(body['rfid'] as string));
     } else if (typeof body['memberId'] === 'string') {
       member = findMember(body['memberId']);
     } else {
-      throw badRequest('Trimite un card RFID sau un membru.');
+      throw badRequest('Trimite un card RFID, un cod QR sau un membru.');
     }
 
     const reply = (outcome: CheckInResult['outcome'], trainingLabel: string | null = null) => {
@@ -608,7 +695,7 @@ export function createMockApi(db: Db = seed()): express.Router {
       trainingLabel: label,
       date: today,
       timestamp: now.toISOString(),
-      method: body['rfid'] ? 'rfid' : 'manual',
+      method: body['rfid'] ? 'rfid' : qr ? 'qr' : 'manual',
     });
     return reply('allowed', label);
   });

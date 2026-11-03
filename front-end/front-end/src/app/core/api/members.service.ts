@@ -2,6 +2,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  CreatedMember,
+  MemberAccessResult,
   MemberAttendance,
   MemberDetail,
   MemberInput,
@@ -35,8 +37,14 @@ export class MembersService {
     });
   }
 
-  create(input: NewMemberInput): Observable<MemberSummary> {
-    return this.http.post<MemberSummary>('/api/members', input);
+  /** Also issues the member's portal password and texts it to them (see `access`). */
+  create(input: NewMemberInput): Observable<CreatedMember> {
+    return this.http.post<CreatedMember>('/api/members', input);
+  }
+
+  /** New portal password by SMS; the member is signed out of the portal. */
+  sendAccess(id: string): Observable<MemberAccessResult> {
+    return this.http.post<MemberAccessResult>(`/api/members/${encodeURIComponent(id)}/access`, {});
   }
 
   update(id: string, input: MemberInput): Observable<MemberSummary> {

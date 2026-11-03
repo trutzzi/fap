@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type {
+  CreatedMember,
   MemberAttendance,
   MemberFilter,
   MemberSummary,
@@ -20,6 +21,7 @@ import {
   rfidInputSchema,
   subscriptionSchema,
 } from '../../lib/validation.js';
+import { issueMemberAccess } from '../account/member-access.js';
 import { assertAdmin } from '../auth/auth.middleware.js';
 import { periodInclude, sellSubscription, toPeriod } from '../finance/periods.js';
 import { checkInHistory, loadSummaries, loadSummary } from './member-queries.js';
@@ -59,7 +61,8 @@ async function checkCourses(db: Db, courseIds: string[]): Promise<void> {
   if (found !== courseIds.length) throw badRequest('Unul dintre cursuri nu există.');
 }
 
-export function membersRouter({ db, clock }: Deps): Router {
+export function membersRouter(deps: Deps): Router {
+  const { db, clock } = deps;
   const router = Router();
 
   const summaryOrThrow = async (id: string) => {
@@ -120,7 +123,10 @@ export function membersRouter({ db, clock }: Deps): Router {
         }),
       );
     }
-    res.status(201).json(await summaryOrThrow(member.id));
+    // Every new member gets a portal password by SMS (for their check-in QR code).
+    const access = await issueMemberAccess(deps, member.id);
+    const body: CreatedMember = { ...(await summaryOrThrow(member.id)), access };
+    res.status(201).json(body);
   });
 
   router.get('/:id', async (req, res) => {
@@ -187,6 +193,13 @@ export function membersRouter({ db, clock }: Deps): Router {
     const { rfid } = parse(rfidInputSchema, req.body);
     await db.member.update({ where: { id }, data: { rfid: await checkRfid(db, rfid, id) } });
     res.json(await summaryOrThrow(id));
+  });
+
+  /** New portal password by SMS (first access, lost password); signs the member out. */
+  router.post('/:id/access', async (req, res) => {
+    const id = req.params.id;
+    await summaryOrThrow(id);
+    res.json(await issueMemberAccess(deps, id));
   });
 
   router.get('/:id/attendance', async (req, res) => {

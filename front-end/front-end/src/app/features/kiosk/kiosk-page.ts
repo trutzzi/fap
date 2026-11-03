@@ -13,7 +13,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
-import { CheckInRequest, CheckInResult } from '../../core/api/models';
+import { CheckInRequest, CheckInResult, MEMBER_QR_PREFIX } from '../../core/api/models';
 import { checkInMessage } from '../../core/checkin-messages';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { formatDayMonth } from '../../core/util/dates';
@@ -24,10 +24,12 @@ import { Icon } from '../../shared/ui/icon';
 import { MemberAvatar } from '../../shared/ui/member-avatar';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { AuthService } from '../../core/auth/auth.service';
+import { QrCamera, qrCameraSupported } from './qr-camera';
 
 /** How long a check-in result stays on screen before returning to idle. */
 const RESULT_VISIBLE_MS = 8000;
 const STATUS_REFRESH_MS = 60_000;
+const CAMERA_KEY = 'fa.kiosk.camera';
 
 const TONE_COLOR = {
   success: 'var(--success)',
@@ -38,6 +40,9 @@ const TONE_COLOR = {
 /**
  * Full-screen check-in kiosk. USB/HID RFID readers behave like keyboards: they type the
  * card code followed by Enter into the focused field, so a hidden input keeps focus.
+ * Members can also show the QR code from their portal (`/cont`): to the tablet's front
+ * camera where the browser can read QR codes, or to a USB/Bluetooth 2D scanner, which
+ * types it like a card reader.
  */
 @Component({
   selector: 'app-kiosk-page',
@@ -49,6 +54,7 @@ const TONE_COLOR = {
     SessionMeter,
     MemberAvatar,
     MemberPickerDialog,
+    QrCamera,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './kiosk-page.html',
@@ -70,6 +76,9 @@ export class KioskPage {
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly searching = signal(false);
+  protected readonly cameraSupported = signal(false);
+  protected readonly cameraOn = signal(readCameraSetting());
+  protected readonly showCamera = computed(() => this.cameraSupported() && this.cameraOn());
 
   protected readonly view = computed(() => {
     const result = this.result();
@@ -104,14 +113,27 @@ export class KioskPage {
 
   constructor() {
     onInterval(STATUS_REFRESH_MS, () => this.status.reload());
-    afterNextRender(() => this.focusReader());
+    afterNextRender(() => {
+      this.focusReader();
+      void qrCameraSupported().then((supported) => this.cameraSupported.set(supported));
+    });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.resetTimer));
   }
 
   protected scan(input: HTMLInputElement): void {
-    const rfid = input.value.trim();
+    const code = input.value.trim();
     input.value = '';
-    if (rfid) this.submit({ rfid });
+    if (!code) return;
+    this.submit(code.startsWith(MEMBER_QR_PREFIX) ? { qr: code } : { rfid: code });
+  }
+
+  protected toggleCamera(): void {
+    this.cameraOn.update((on) => !on);
+    try {
+      localStorage.setItem(CAMERA_KEY, this.cameraOn() ? '1' : '0');
+    } catch {
+      // Storage unavailable: the setting lasts for this visit.
+    }
   }
 
   protected submit(request: CheckInRequest): void {
@@ -142,5 +164,14 @@ export class KioskPage {
     this.sound.play(checkInMessage(result).tone);
     clearTimeout(this.resetTimer);
     this.resetTimer = setTimeout(() => this.result.set(null), RESULT_VISIBLE_MS);
+  }
+}
+
+/** The camera is on unless it was switched off on this tablet. */
+function readCameraSetting(): boolean {
+  try {
+    return typeof localStorage === 'undefined' || localStorage.getItem(CAMERA_KEY) !== '0';
+  } catch {
+    return true;
   }
 }

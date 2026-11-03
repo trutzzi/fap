@@ -44,6 +44,10 @@ export interface MemberEntity {
   subscription: SubscriptionEntity | null;
   photoConsent: boolean;
   photo: { mimeType: string; data: Uint8Array; updatedAt: number } | null;
+  /** Member portal PIN (4–6 digits), in plain text: this is a mock. `null` until issued. */
+  pin: string | null;
+  /** HMAC key of the rotating check-in QR code; created on first use. */
+  qrSecret: string | null;
 }
 
 /** A refused scan, shown in the coach's class list; never counts as a session. */

@@ -31,7 +31,7 @@ Every push to `main` runs `.github/workflows/ci.yml`:
 2. **images** builds three Docker images and pushes them to GHCR: `fap-api` (the API), `fap-api-tools` (migrations and account scripts) and `fap-web` (the Angular SSR server). Each is tagged with the commit SHA and `latest`.
 3. **deploy** connects over SSH to the server as `deploy`, pinning the server's host key. It copies `deploy/docker-compose.yml` to `~/fap`, then pulls and restarts the stack. Migrations run first, and the API only starts once they succeed. The job waits for the health checks and runs a smoke test on https://fap.valentintruta.ro.
 
-**Server layout:** `~/fap/docker-compose.yml` is copied there by CI. `~/fap/.env` holds `POSTGRES_PASSWORD`; it exists only on the server, so never commit it. The database lives in the `fap_db-data` Docker volume.
+**Server layout:** `~/fap/docker-compose.yml` is copied there by CI. `~/fap/.env` holds `POSTGRES_PASSWORD` and, once SMS is switched on in Administrare › Club, the SMSLink.ro credentials for member PINs (`SMSLINK_CONNECTION_ID`, `SMSLINK_PASSWORD`, optional `SMSLINK_SENDER`); it exists only on the server, so never commit it. The database lives in the `fap_db-data` Docker volume.
 
 **Reverse proxy:** the shared Caddy container (`/opt/albumflow/infra/caddy/Caddyfile`) contains the block from `deploy/Caddyfile.fap`. It reaches `fap-web` and `fap-api` over the `albumflow_default` network and handles HTTPS automatically.
 
