@@ -2,10 +2,19 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
-/** Signed-in staff only; others go to the login page and come back afterwards. */
+/** The site's entry point (`/` redirects here); signed-out visitors are mostly members. */
+const HOME = '/dashboard';
+
+/**
+ * Signed-in staff only. Signed-out visitors of the home page get the members' login (staff
+ * reach theirs from its discreet link); a deeper staff link goes to the staff login and
+ * comes back afterwards.
+ */
 export const authGuard: CanActivateFn = (_route, state) => {
   if (inject(AuthService).user()) return true;
-  return inject(Router).createUrlTree(['/login'], { queryParams: { redirect: state.url } });
+  const router = inject(Router);
+  if (state.url === HOME) return router.createUrlTree(['/cont/login']);
+  return router.createUrlTree(['/login'], { queryParams: { redirect: state.url } });
 };
 
 /** Administrators only; reception is sent to the dashboard. */

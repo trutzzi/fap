@@ -78,3 +78,16 @@
   font-size: 13px;
   text-align: center;
 }
+
+.staff-link {
+  align-self: center;
+  margin-top: -12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.35;
+  text-decoration: none;
+}
+.staff-link:hover,
+.staff-link:focus-visible {
+  opacity: 1;
+}

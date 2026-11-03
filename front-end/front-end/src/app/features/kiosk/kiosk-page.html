@@ -22,6 +22,18 @@
         >
           {{ cameraOn() ? 'Cameră QR pornită' : 'Cameră QR oprită' }}
         </button>
+        @if (cameraOn() && isAdmin()) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon sound"
+            [attr.aria-label]="
+              facing() === 'user' ? 'Folosește camera din spate' : 'Folosește camera din față'
+            "
+            (click)="toggleFacing()"
+          >
+            {{ facing() === 'user' ? 'Cameră: față' : 'Cameră: spate' }}
+          </button>
+        }
       }
       <button
         type="button"
@@ -39,7 +51,7 @@
   <div class="panels">
     <section class="panel scan" aria-labelledby="scan-title">
       @if (showCamera()) {
-        <app-qr-camera class="camera" (scanned)="submit({ qr: $event })" />
+        <app-qr-camera class="camera" [facing]="facing()" (scanned)="submit({ qr: $event })" />
         <div>
           <h1 id="scan-title" class="scan-title display">Card sau cod QR</h1>
           <p class="muted scan-hint">

@@ -4,9 +4,12 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  effect,
   inject,
+  input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { MEMBER_QR_PREFIX } from '../../core/api/models';
@@ -19,6 +22,9 @@ interface BarcodeDetectorClass {
   new (options: { formats: string[] }): BarcodeDetectorLike;
   getSupportedFormats(): Promise<string[]>;
 }
+
+/** `user`: the tablet's front camera, facing the members; `environment`: the back one. */
+export type CameraFacing = 'user' | 'environment';
 
 const SCAN_INTERVAL_MS = 250;
 /** A code still held in front of the camera is not submitted again for this long. */
@@ -40,14 +46,21 @@ export async function qrCameraSupported(): Promise<boolean> {
 }
 
 /**
- * Live front-camera preview that reads member QR codes (codes of other apps are ignored).
+ * Live camera preview (front or back) that reads member QR codes; codes of other apps are
+ * ignored.
  * Needs a secure context (HTTPS or localhost) and camera permission, granted once.
  */
 @Component({
   selector: 'app-qr-camera',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <video #video muted playsinline aria-hidden="true"></video>
+    <video
+      #video
+      muted
+      playsinline
+      aria-hidden="true"
+      [class.mirrored]="facing() === 'user'"
+    ></video>
     @if (error(); as message) {
       <p class="error" role="alert">{{ message }}</p>
     }
@@ -66,7 +79,9 @@ export async function qrCameraSupported(): Promise<boolean> {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      /* Front camera: mirror it so members see themselves as in a mirror. */
+    }
+    /* Front camera: mirrored, so members see themselves as in a mirror. */
+    video.mirrored {
       transform: scaleX(-1);
     }
     .error {
@@ -84,63 +99,89 @@ export async function qrCameraSupported(): Promise<boolean> {
 })
 export class QrCamera {
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
+  /** Which camera to use; changing it restarts the preview. */
+  readonly facing = input<CameraFacing>('user');
   /** A member QR code read by the camera. */
   readonly scanned = output<string>();
   protected readonly error = signal<string | null>(null);
 
   private stream: MediaStream | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private stopped = false;
+  /** Bumped on every stop, so a camera still starting up for an old run gives up. */
+  private run = 0;
+  private rendered = false;
   private last = { value: '', at: 0 };
 
   constructor() {
-    afterNextRender(() => void this.start());
+    afterNextRender(() => {
+      this.rendered = true;
+      void this.start();
+    });
+    effect(() => {
+      this.facing();
+      untracked(() => {
+        if (!this.rendered) return;
+        this.stop();
+        void this.start();
+      });
+    });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
 
   private async start(): Promise<void> {
+    const run = this.run;
+    this.error.set(null);
     const Detector = detectorClass();
     if (!Detector) {
       this.error.set('Acest browser nu poate citi coduri QR cu camera.');
       return;
     }
+    let stream: MediaStream;
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: this.facing(), width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
     } catch {
-      this.error.set('Camera nu este disponibilă. Permite accesul la cameră în browser.');
+      if (run === this.run) {
+        this.error.set('Camera nu este disponibilă. Permite accesul la cameră în browser.');
+      }
       return;
     }
-    if (this.stopped) return this.stop();
+    if (run !== this.run) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.stream = stream;
     const video = this.video().nativeElement;
-    video.srcObject = this.stream;
+    video.srcObject = stream;
     await video.play().catch(() => undefined);
     const detector = new Detector({ formats: ['qr_code'] });
 
     const tick = async () => {
-      if (this.stopped) return;
+      if (run !== this.run) return;
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
         try {
           const codes = await detector.detect(video);
           const code = codes.find((c) => c.rawValue.startsWith(MEMBER_QR_PREFIX))?.rawValue;
           const now = Date.now();
-          if (code && (code !== this.last.value || now - this.last.at > REPEAT_AFTER_MS)) {
-            this.last = { value: code, at: now };
-            this.scanned.emit(code);
+          if (run === this.run && code) {
+            if (code !== this.last.value || now - this.last.at > REPEAT_AFTER_MS) {
+              this.last = { value: code, at: now };
+              this.scanned.emit(code);
+            }
           }
         } catch {
           // A frame that can't be analysed; try the next one.
         }
       }
-      this.timer = setTimeout(() => void tick(), SCAN_INTERVAL_MS);
+      if (run === this.run) this.timer = setTimeout(() => void tick(), SCAN_INTERVAL_MS);
     };
     void tick();
   }
 
   private stop(): void {
-    this.stopped = true;
+    this.run++;
     clearTimeout(this.timer);
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;

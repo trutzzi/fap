@@ -46,6 +46,11 @@ describe('auth guards', () => {
     expect(run(guestGuard)).toBe(true);
   });
 
+  it('opens the members’ login for signed-out visitors of the home page', async () => {
+    await signIn(null);
+    expect(urlOf(run(authGuard, '/dashboard'))).toBe('/cont/login');
+  });
+
   it('lets staff in and keeps them away from the login page', async () => {
     await signIn(RECEPTION);
     expect(run(authGuard)).toBe(true);

@@ -24,12 +24,13 @@ import { Icon } from '../../shared/ui/icon';
 import { MemberAvatar } from '../../shared/ui/member-avatar';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { AuthService } from '../../core/auth/auth.service';
-import { QrCamera, qrCameraSupported } from './qr-camera';
+import { CameraFacing, QrCamera, qrCameraSupported } from './qr-camera';
 
 /** How long a check-in result stays on screen before returning to idle. */
 const RESULT_VISIBLE_MS = 8000;
 const STATUS_REFRESH_MS = 60_000;
 const CAMERA_KEY = 'fa.kiosk.camera';
+const FACING_KEY = 'fa.kiosk.camera-facing';
 
 const TONE_COLOR = {
   success: 'var(--success)',
@@ -64,6 +65,8 @@ export class KioskPage {
   private readonly academy = inject(AcademyService);
   /** Name search needs member data, which coaches may not read. */
   protected readonly canSearch = inject(AuthService).isStaff;
+  /** Only an administrator picks the tablet's camera (front or back). */
+  protected readonly isAdmin = inject(AuthService).isAdmin;
   protected readonly sound = inject(FeedbackSound);
   private readonly reader = viewChild.required<ElementRef<HTMLInputElement>>('reader');
 
@@ -79,6 +82,7 @@ export class KioskPage {
   protected readonly cameraSupported = signal(false);
   protected readonly cameraOn = signal(readCameraSetting());
   protected readonly showCamera = computed(() => this.cameraSupported() && this.cameraOn());
+  protected readonly facing = signal<CameraFacing>(readFacingSetting());
 
   protected readonly view = computed(() => {
     const result = this.result();
@@ -129,11 +133,12 @@ export class KioskPage {
 
   protected toggleCamera(): void {
     this.cameraOn.update((on) => !on);
-    try {
-      localStorage.setItem(CAMERA_KEY, this.cameraOn() ? '1' : '0');
-    } catch {
-      // Storage unavailable: the setting lasts for this visit.
-    }
+    remember(CAMERA_KEY, this.cameraOn() ? '1' : '0');
+  }
+
+  protected toggleFacing(): void {
+    this.facing.update((f) => (f === 'user' ? 'environment' : 'user'));
+    remember(FACING_KEY, this.facing());
   }
 
   protected submit(request: CheckInRequest): void {
@@ -173,5 +178,25 @@ function readCameraSetting(): boolean {
     return typeof localStorage === 'undefined' || localStorage.getItem(CAMERA_KEY) !== '0';
   } catch {
     return true;
+  }
+}
+
+/** Front camera unless an administrator chose the back one on this tablet. */
+function readFacingSetting(): CameraFacing {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(FACING_KEY) === 'environment'
+      ? 'environment'
+      : 'user';
+  } catch {
+    return 'user';
+  }
+}
+
+/** Per-tablet kiosk settings; without storage (private mode) they last for this visit. */
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable.
   }
 }
