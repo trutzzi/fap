@@ -124,6 +124,7 @@ describe('admin settings', () => {
       timezone: 'Europe/Bucharest',
       smsEnabled: true,
       kioskVolume: 35,
+      expiryReminderSms: true,
     };
     await admin.put('/api/club').send(club).expect(200);
     expect((await request(app).get('/api/club')).body).toEqual(club);

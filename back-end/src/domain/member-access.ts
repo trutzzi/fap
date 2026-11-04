@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { MEMBER_QR_PREFIX } from '../contract/models.js';
+import { formatDate } from '../lib/dates.js';
 
 /**
  * Comparable form of a phone number: digits only, Romanian numbers in national form
@@ -42,6 +43,16 @@ export const SMS_MAX_LENGTH = 160;
 /** The SMS carrying a new portal PIN; the club name is shortened to fit one SMS. */
 export function accessSmsText(clubName: string, pin: string, portalUrl: string): string {
   const body = `: codul tau PIN de membru este ${pin}. Intra cu nr. de telefon pe ${portalUrl} pentru codul QR de acces.`;
+  const club = toGsmText(clubName).trim() || 'Fight Academy';
+  return toGsmText(club.slice(0, Math.max(SMS_MAX_LENGTH - body.length, 0)).trim() + body);
+}
+
+/** Days before the end of a subscription when the reminder SMS goes out. */
+export const EXPIRY_REMINDER_DAYS = 3;
+
+/** "Fight Academy Pitesti: abonamentul tau expira pe 07-11-2026. …" — one GSM SMS. */
+export function expiryReminderText(clubName: string, endDate: string): string {
+  const body = `: abonamentul tau expira pe ${formatDate(endDate)}. Te asteptam la receptie pentru reinnoire. Multumim!`;
   const club = toGsmText(clubName).trim() || 'Fight Academy';
   return toGsmText(club.slice(0, Math.max(SMS_MAX_LENGTH - body.length, 0)).trim() + body);
 }

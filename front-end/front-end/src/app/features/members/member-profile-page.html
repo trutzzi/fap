@@ -222,7 +222,18 @@
       </section>
 
       <section class="card history" aria-labelledby="history-title">
-        <h2 id="history-title" class="section-title">Istoric check-in</h2>
+        <div class="card-header">
+          <h2 id="history-title" class="section-title">Istoric check-in</h2>
+          @if (isAdmin() && m.history.length) {
+            <button
+              type="button"
+              class="btn btn-sm btn-ghost"
+              (click)="dialog.set('clear-history')"
+            >
+              Golește istoricul
+            </button>
+          }
+        </div>
         <ul>
           @for (h of m.history; track h.id) {
             <li>
@@ -237,6 +248,15 @@
                     : ''
                 }}
               </span>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost btn-icon"
+                [attr.aria-label]="'Șterge check-in-ul din ' + historyDate(h)"
+                title="Șterge check-in-ul"
+                (click)="removingCheckIn.set(h)"
+              >
+                <app-icon name="close" [size]="16" />
+              </button>
             </li>
           } @empty {
             <li class="state-message">Niciun check-in încă.</li>
@@ -316,6 +336,35 @@
           (closed)="dialog.set(null)"
         />
       }
+    }
+    @if (removingCheckIn(); as h) {
+      <app-confirm-dialog
+        heading="Șterge check-in-ul"
+        [message]="
+          'Ștergi check-in-ul din ' +
+          historyDate(h) +
+          (h.trainingLabel ? ' (' + h.trainingLabel + ')' : '') +
+          '? Dacă a consumat o ședință, ședința revine în abonament.'
+        "
+        confirmLabel="Șterge"
+        [action]="removeCheckInAction"
+        (done)="onHistoryChanged('Check-in-ul a fost șters.')"
+        (closed)="removingCheckIn.set(null)"
+      />
+    }
+    @if (dialog() === 'clear-history') {
+      <app-confirm-dialog
+        heading="Golește istoricul"
+        [message]="
+          'Ștergi toate check-in-urile lui ' +
+          m.fullName +
+          ' (și scanările refuzate)? Ședințele folosite revin în abonament. Abonamentele și plățile rămân. Acțiunea nu poate fi anulată.'
+        "
+        confirmLabel="Golește istoricul"
+        [action]="clearHistoryAction"
+        (done)="onHistoryChanged('Istoricul de check-in a fost golit.')"
+        (closed)="dialog.set(null)"
+      />
     }
     @if (accessResult(); as result) {
       <app-member-access-dialog [result]="result" (closed)="accessResult.set(null)" />

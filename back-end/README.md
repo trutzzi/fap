@@ -70,6 +70,7 @@ All responses are JSON. Errors have the shape `{ "message": "…" }`, with messa
 | PUT | `/api/members/:id/subscription` | Renew or change plan (replaces the current subscription) |
 | PUT | `/api/members/:id/rfid` | Assign, replace (`{ rfid }`) or remove (`{ rfid: null }`) a card |
 | GET | `/api/members/:id/attendance?month=YYYY-MM` | Days with check-ins in a month |
+| DELETE | `/api/members/:id/checkins/:checkInId` · `/api/members/:id/checkins` | Remove one mistaken check-in (staff) / clear the member's check-in history (admin) |
 | POST | `/api/members/bulk-delete` | Permanently delete several members with their history (`{ memberIds }`, admin) |
 | GET / POST | `/api/announcements` · DELETE `/api/announcements/:id` | Announcements to members: list with read counts, send (`{ title, body, audience }`), withdraw (staff) |
 | GET | `/api/account/announcements` · POST `/api/account/announcements/read` | The member's announcements / mark them read |

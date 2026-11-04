@@ -80,8 +80,14 @@
               </span>
             }
             <button type="button" class="btn btn-sm" (click)="picking.set(true)">
-              + Adaugă membru
+              {{ chosen().length ? 'Modifică selecția' : '+ Alege membrii' }}
             </button>
+            @if (chosen().length) {
+              <span class="muted">{{ chosen().length }} aleși</span>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="chosen.set([])">
+                Golește
+              </button>
+            }
           </div>
         }
       </fieldset>
@@ -124,9 +130,10 @@
 </div>
 
 @if (picking()) {
-  <app-member-picker-dialog
-    heading="Adaugă destinatar"
-    (picked)="addMember($event)"
+  <app-member-multi-picker-dialog
+    heading="Alege destinatarii"
+    [initial]="chosen()"
+    (confirmed)="chosen.set($event)"
     (closed)="picking.set(false)"
   />
 }

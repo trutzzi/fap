@@ -101,6 +101,11 @@ export interface Club {
   smsEnabled: boolean;
   /** Volume of the kiosk's check-in sounds, 0–100 (0 = silent); each tablet can still mute. */
   kioskVolume: number;
+  /**
+   * Text each member once, 3 days before their subscription ends (10:00–20:00; needs
+   * SMSLink configured on the server).
+   */
+  expiryReminderSms: boolean;
 }
 
 export type ClubInput = Club;

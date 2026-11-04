@@ -216,6 +216,7 @@ export const clubSchema = z.object({
   timezone: z.string('Fusul orar este invalid.').refine(isTimezone, 'Fusul orar este invalid.'),
   smsEnabled: z.boolean('Opțiunea pentru SMS este invalidă.').default(false),
   kioskVolume: int('Volumul', 0, 100).default(60),
+  expiryReminderSms: z.boolean('Opțiunea pentru reamintiri este invalidă.').default(false),
 });
 
 export const checkInSchema = z

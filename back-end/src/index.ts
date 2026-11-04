@@ -6,6 +6,7 @@ import { createDb } from './db.js';
 import { systemClock } from './lib/clock.js';
 import { logSmsSender, smsLinkSender } from './lib/sms.js';
 import { DEFAULT_CLUB, applyTimezone, loadClub } from './modules/club/club.routes.js';
+import { startExpiryReminders } from './modules/reminders/expiry-reminders.js';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 const config = loadConfig();
@@ -40,6 +41,9 @@ const app = createApp({
   trustProxy: config.TRUST_PROXY,
 });
 
+// Subscription expiry SMS (switched on in Administrare › Club); one API instance runs it.
+const stopReminders = startExpiryReminders({ db, sms, clock: systemClock }, logger);
+
 const server = app.listen(config.PORT, (error) => {
   if (error) throw error;
   logger.info(`FightAcademy API listening on http://localhost:${config.PORT}`);
@@ -47,6 +51,7 @@ const server = app.listen(config.PORT, (error) => {
 
 async function shutdown(signal: string) {
   logger.info(`${signal} received, shutting down`);
+  stopReminders();
   server.close();
   await db.$disconnect();
   process.exit(0);

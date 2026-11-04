@@ -14,14 +14,14 @@ import {
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { ConfirmDialog } from '../../shared/dialogs/confirm-dialog';
-import { MemberPickerDialog } from '../../shared/dialogs/member-picker-dialog';
+import { MemberMultiPickerDialog } from '../../shared/dialogs/member-multi-picker-dialog';
 
 type AudienceKind = AnnouncementAudience['kind'];
 
 /** Messages to members, shown in their portal (`/cont`), and the history of sent ones. */
 @Component({
   selector: 'app-announcements-page',
-  imports: [DatePipe, ReactiveFormsModule, ConfirmDialog, MemberPickerDialog],
+  imports: [DatePipe, ReactiveFormsModule, ConfirmDialog, MemberMultiPickerDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './announcements-page.html',
   styleUrl: './announcements-page.css',
@@ -60,12 +60,6 @@ export class AnnouncementsPage {
 
   protected invalid(name: 'title' | 'body'): boolean {
     return this.submitted() && this.form.controls[name].invalid;
-  }
-
-  protected addMember(member: MemberSummary): void {
-    if (!this.chosen().some((m) => m.id === member.id)) {
-      this.chosen.update((list) => [...list, member]);
-    }
   }
 
   protected removeMember(id: string): void {

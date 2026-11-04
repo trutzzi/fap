@@ -206,6 +206,30 @@ export function membersRouter(deps: Deps): Router {
     res.json(await summaryOrThrow(id));
   });
 
+  /**
+   * Removes one check-in made by mistake (admin and reception). The session is freed by
+   * itself: usage is counted from check-ins.
+   */
+  router.delete('/:id/checkins/:checkInId', async (req, res) => {
+    const { count } = await db.checkIn.deleteMany({
+      where: { id: req.params.checkInId, memberId: req.params.id },
+    });
+    if (count === 0) throw notFound('Check-in-ul nu a fost găsit.');
+    res.json(await summaryOrThrow(req.params.id));
+  });
+
+  /** Admin: clears the member's whole check-in history (check-ins and refused scans). */
+  router.delete('/:id/checkins', async (req, res) => {
+    assertAdmin(req);
+    const id = req.params.id;
+    await summaryOrThrow(id);
+    await db.$transaction([
+      db.checkIn.deleteMany({ where: { memberId: id } }),
+      db.refusedScan.deleteMany({ where: { memberId: id } }),
+    ]);
+    res.json(await summaryOrThrow(id));
+  });
+
   /** New portal password by SMS (first access, lost password); signs the member out. */
   router.post('/:id/access', async (req, res) => {
     const id = req.params.id;

@@ -129,6 +129,7 @@ export function createMockApi(db: Db = seed()): express.Router {
     timezone: 'Europe/Bucharest',
     smsEnabled: false,
     kioskVolume: 60,
+    expiryReminderSms: false,
   };
   const api = express.Router();
   api.use(express.json());
@@ -462,6 +463,7 @@ export function createMockApi(db: Db = seed()): express.Router {
       smsEnabled: b['smsEnabled'] === true,
       kioskVolume:
         b['kioskVolume'] === undefined ? 60 : integer(b, 'kioskVolume', 'Volumul', 0, 100),
+      expiryReminderSms: b['expiryReminderSms'] === true,
     };
     res.json(club);
   });
@@ -731,6 +733,24 @@ export function createMockApi(db: Db = seed()): express.Router {
     const member = findMember(req.params['id']);
     Object.assign(member, parseMember(req.body, member.id));
     if (!member.photoConsent) member.photo = null; // GDPR: withdrawn consent deletes the photo
+    res.json(views.summary(member));
+  });
+
+  api.delete('/members/:id/checkins/:checkInId', (req, res) => {
+    const member = findMember(req.params['id']);
+    const before = db.checkins.length;
+    db.checkins = db.checkins.filter(
+      (c) => !(c.id === req.params['checkInId'] && c.memberId === member.id),
+    );
+    if (db.checkins.length === before) throw new HttpError(404, 'Check-in-ul nu a fost găsit.');
+    res.json(views.summary(member));
+  });
+
+  api.delete('/members/:id/checkins', (req, res) => {
+    assertAdmin(req);
+    const member = findMember(req.params['id']);
+    db.checkins = db.checkins.filter((c) => c.memberId !== member.id);
+    db.refusedScans = db.refusedScans.filter((r) => r.memberId !== member.id);
     res.json(views.summary(member));
   });
 

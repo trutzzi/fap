@@ -50,7 +50,15 @@ import { SessionMeter } from '../../shared/ui/session-meter';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
 type ProfileDialog =
-  'edit' | 'photo' | 'payment' | 'rfid' | 'access' | 'renew' | 'change' | 'delete';
+  | 'edit'
+  | 'photo'
+  | 'payment'
+  | 'rfid'
+  | 'access'
+  | 'clear-history'
+  | 'renew'
+  | 'change'
+  | 'delete';
 
 const METHOD_LABELS: Record<CheckInMethod, string> = {
   rfid: 'Card RFID',
@@ -178,6 +186,12 @@ export class MemberProfilePage {
   });
 
   protected readonly deleteAction = () => this.membersApi.delete(this.id());
+  /** A check-in about to be removed (confirmation open). */
+  protected readonly removingCheckIn = signal<CheckInRecord | null>(null);
+  protected readonly removeCheckInAction = () =>
+    this.membersApi.deleteCheckIn(this.id(), this.removingCheckIn()!.id);
+  protected readonly clearHistoryAction = () => this.membersApi.clearHistory(this.id());
+
   protected readonly accessAction = () =>
     this.membersApi.sendAccess(this.id()).pipe(tap((result) => this.accessResult.set(result)));
 
@@ -225,6 +239,11 @@ export class MemberProfilePage {
   protected refresh(): void {
     this.member.reload();
     this.attendance.reload();
+  }
+
+  protected onHistoryChanged(message: string): void {
+    this.toast.success(message);
+    this.refresh();
   }
 
   protected onDeleted(): void {

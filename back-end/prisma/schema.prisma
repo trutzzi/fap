@@ -84,19 +84,21 @@ model MemberSession {
 
 /// The club's details; a single row with id 1.
 model Club {
-  id          Int      @id @default(1)
-  name        String
-  address     String
-  phone       String
-  email       String
-  website     String
+  id                Int      @id @default(1)
+  name              String
+  address           String
+  phone             String
+  email             String
+  website           String
   /// IANA timezone for "today", training times and check-in dates.
-  timezone    String
+  timezone          String
   /// Text new member PINs by SMS (SMSLink). Off: reception hands the PIN over in person.
-  smsEnabled  Boolean  @default(false) @map("sms_enabled")
+  smsEnabled        Boolean  @default(false) @map("sms_enabled")
   /// Volume of the kiosk's check-in sounds, 0–100 (0 = silent).
-  kioskVolume Int      @default(60) @map("kiosk_volume") @db.SmallInt
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  kioskVolume       Int      @default(60) @map("kiosk_volume") @db.SmallInt
+  /// Text members 3 days before their subscription ends (once per period; needs SMSLink).
+  expiryReminderSms Boolean  @default(false) @map("expiry_reminder_sms")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("club")
 }
@@ -196,13 +198,15 @@ model MemberCourse {
 
 /// The member's current subscription; setting a new one replaces it.
 model Subscription {
-  memberId  String   @id @map("member_id")
-  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  planId    PlanId   @map("plan_id")
-  plan      Plan     @relation(fields: [planId], references: [id])
-  startDate DateTime @map("start_date") @db.Date
+  memberId          String    @id @map("member_id")
+  member            Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId            PlanId    @map("plan_id")
+  plan              Plan      @relation(fields: [planId], references: [id])
+  startDate         DateTime  @map("start_date") @db.Date
   /// Inclusive: start + 1 month − 1 day. Stored so usage can be counted in SQL.
-  endDate   DateTime @map("end_date") @db.Date
+  endDate           DateTime  @map("end_date") @db.Date
+  /// The `endDate` an expiry reminder SMS was sent (or attempted) for: one per period.
+  expiryReminderFor DateTime? @map("expiry_reminder_for") @db.Date
 
   @@index([endDate])
   @@map("subscriptions")

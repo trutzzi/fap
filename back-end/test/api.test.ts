@@ -296,3 +296,40 @@ describe('bulk delete', () => {
     expect(await db.member.count()).toBe(1);
   });
 });
+
+describe('check-in history cleanup', () => {
+  it('removes a mistaken check-in and gives the session back', async () => {
+    const { id } = await createMember();
+    await api.post('/api/checkins').send({ rfid: '04A391F2' }).expect(200);
+    const before = await api.get(`/api/members/${id}`).expect(200);
+    expect(before.body.subscription.used).toBe(1);
+
+    const checkInId = before.body.history[0].id;
+    const reception = await signedIn('reception');
+    const res = await reception.delete(`/api/members/${id}/checkins/${checkInId}`).expect(200);
+    expect(res.body.subscription).toMatchObject({ used: 0, remaining: 12 });
+    await reception.delete(`/api/members/${id}/checkins/${checkInId}`).expect(404);
+    // Another member's check-in can't be removed through this member.
+    const other = await createMember({ firstName: 'Ion', rfid: '04B722C1' });
+    await api.post('/api/checkins').send({ rfid: '04B722C1' }).expect(200);
+    const otherCheckIn = (await api.get(`/api/members/${other.id}`)).body.history[0].id;
+    await api.delete(`/api/members/${id}/checkins/${otherCheckIn}`).expect(404);
+  });
+
+  it('lets an admin clear the whole history', async () => {
+    const { id } = await createMember();
+    await addPastCheckIns(id, 5);
+    await db.refusedScan.create({
+      data: { memberId: id, date: toDbDate('2026-10-02'), reason: 'expired' },
+    });
+    const reception = await signedIn('reception');
+    await reception.delete(`/api/members/${id}/checkins`).expect(403);
+
+    const res = await api.delete(`/api/members/${id}/checkins`).expect(200);
+    expect(res.body.subscription.used).toBe(0);
+    expect(await db.checkIn.count({ where: { memberId: id } })).toBe(0);
+    expect(await db.refusedScan.count({ where: { memberId: id } })).toBe(0);
+    // The subscription and its period stay.
+    expect(await db.subscriptionPeriod.count({ where: { memberId: id } })).toBe(1);
+  });
+});

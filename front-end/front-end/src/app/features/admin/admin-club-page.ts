@@ -91,6 +91,16 @@ import { FeedbackSound, FeedbackTone } from '../../core/util/feedback-sound';
             (necesită contul SMSLink configurat pe server).
           </span>
         </div>
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" formControlName="expiryReminderSms" />
+            Trimite SMS de reamintire cu 3 zile înainte de expirarea abonamentului
+          </label>
+          <span class="field-hint">
+            Un singur SMS pe perioadă de abonament, între 10:00 și 20:00. Necesită contul SMSLink
+            configurat pe server; erorile apar în pagina de logs.
+          </span>
+        </div>
         <fieldset class="field">
           <legend>Sunete kiosk</legend>
           <label for="club-volume" class="volume">
@@ -180,6 +190,7 @@ export class AdminClubPage {
     timezone: ['Europe/Bucharest', Validators.required],
     smsEnabled: [false],
     kioskVolume: [60],
+    expiryReminderSms: [false],
   });
 
   constructor() {

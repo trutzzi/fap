@@ -52,6 +52,18 @@ export class MembersService {
     return this.http.put<MemberSummary>(`/api/members/${encodeURIComponent(id)}`, input);
   }
 
+  /** Removes one check-in made by mistake; the session is given back. */
+  deleteCheckIn(memberId: string, checkInId: string): Observable<MemberSummary> {
+    return this.http.delete<MemberSummary>(
+      `/api/members/${encodeURIComponent(memberId)}/checkins/${encodeURIComponent(checkInId)}`,
+    );
+  }
+
+  /** Admin: deletes all of the member's check-ins and refused scans. */
+  clearHistory(memberId: string): Observable<MemberSummary> {
+    return this.http.delete<MemberSummary>(`/api/members/${encodeURIComponent(memberId)}/checkins`);
+  }
+
   /** Admin: permanently deletes several members with all their history. */
   bulkDelete(memberIds: string[]): Observable<BulkDeleteResult> {
     return this.http.post<BulkDeleteResult>('/api/members/bulk-delete', { memberIds });
