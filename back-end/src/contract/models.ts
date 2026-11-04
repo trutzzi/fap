@@ -99,6 +99,8 @@ export interface Club {
    * is shown the PIN and hands it over in person.
    */
   smsEnabled: boolean;
+  /** Volume of the kiosk's check-in sounds, 0–100 (0 = silent); each tablet can still mute. */
+  kioskVolume: number;
 }
 
 export type ClubInput = Club;

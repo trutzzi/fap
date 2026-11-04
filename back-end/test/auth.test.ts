@@ -123,6 +123,7 @@ describe('admin settings', () => {
       website: 'fightacademy.ro',
       timezone: 'Europe/Bucharest',
       smsEnabled: true,
+      kioskVolume: 35,
     };
     await admin.put('/api/club').send(club).expect(200);
     expect((await request(app).get('/api/club')).body).toEqual(club);
@@ -132,6 +133,11 @@ describe('admin settings', () => {
       .send({ ...club, timezone: 'Mars/Olympus' })
       .expect(400);
     expect(bad.body.message).toBe('Fusul orar este invalid.');
+    const loud = await admin
+      .put('/api/club')
+      .send({ ...club, kioskVolume: 150 })
+      .expect(400);
+    expect(loud.body.message).toBe('Volumul trebuie să fie un număr între 0 și 100.');
   });
 
   it('edits plans and keeps the unlimited plan without a session limit', async () => {

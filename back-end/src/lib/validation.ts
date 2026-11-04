@@ -210,6 +210,7 @@ export const clubSchema = z.object({
   website: z.string().trim().max(120, 'Adresa site-ului este prea lungă.').default(''),
   timezone: z.string('Fusul orar este invalid.').refine(isTimezone, 'Fusul orar este invalid.'),
   smsEnabled: z.boolean('Opțiunea pentru SMS este invalidă.').default(false),
+  kioskVolume: int('Volumul', 0, 100).default(60),
 });
 
 export const checkInSchema = z

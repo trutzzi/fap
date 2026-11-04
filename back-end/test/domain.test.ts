@@ -68,6 +68,16 @@ describe('schedule', () => {
     expect(currentSlot(slots, at(19, 50), ['bjj'])?.courseId).toBe('bjj');
   });
 
+  it('moves a member of both courses to the next training once its window opens', () => {
+    const slots = [slot('17:00', 'karate'), slot('18:00', 'bjj')];
+    const both = ['karate', 'bjj'];
+    expect(currentSlot(slots, at(17, 5), both)?.courseId).toBe('karate');
+    expect(currentSlot(slots, at(17, 29), both)?.courseId).toBe('karate');
+    expect(currentSlot(slots, at(17, 35), both)?.courseId).toBe('bjj');
+    // Only in Karate: still Karate, even while BJJ's window is open.
+    expect(currentSlot(slots, at(17, 35), ['karate'])?.courseId).toBe('karate');
+  });
+
   it('summarizes weekly slots', () => {
     const days = (weekdays: number[], time: string) =>
       weekdays.map((weekday) => ({ weekday, time }));

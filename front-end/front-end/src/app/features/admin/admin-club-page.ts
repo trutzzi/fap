@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
+import { FeedbackSound, FeedbackTone } from '../../core/util/feedback-sound';
 
 @Component({
   selector: 'app-admin-club-page',
@@ -90,6 +91,39 @@ import { ToastService } from '../../core/ui/toast.service';
             (necesită contul SMSLink configurat pe server).
           </span>
         </div>
+        <fieldset class="field">
+          <legend>Sunete kiosk</legend>
+          <label for="club-volume" class="volume">
+            Volum
+            <input
+              id="club-volume"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              formControlName="kioskVolume"
+            />
+            <strong>{{
+              form.controls.kioskVolume.value === 0
+                ? 'Oprit'
+                : form.controls.kioskVolume.value + '%'
+            }}</strong>
+          </label>
+          <div class="tests">
+            <span class="muted">Ascultă:</span>
+            <button type="button" class="btn btn-sm" (click)="test('success')">Acces permis</button>
+            <button type="button" class="btn btn-sm" (click)="test('warning')">
+              Limită atinsă
+            </button>
+            <button type="button" class="btn btn-sm" (click)="test('danger')">
+              Refuzat / expirat
+            </button>
+          </div>
+          <span class="field-hint">
+            Se aplică pe toate tabletele kiosk în cel mult un minut după salvare. Fiecare kiosk
+            poate opri sunetul din butonul „Sunet”.
+          </span>
+        </fieldset>
         <div class="form-footer">
           <button type="submit" class="btn btn-primary" [disabled]="saving() || !club.value()">
             {{ saving() ? 'Se salvează…' : 'Salvează' }}
@@ -102,11 +136,31 @@ import { ToastService } from '../../core/ui/toast.service';
     .club {
       max-width: 760px;
     }
+    .volume {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .volume input {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .volume strong {
+      min-width: 3.5em;
+      text-align: right;
+    }
+    .tests {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
   `,
 })
 export class AdminClubPage {
   private readonly academy = inject(AcademyService);
   private readonly toast = inject(ToastService);
+  private readonly sound = inject(FeedbackSound);
 
   protected readonly club = createQuery(
     () => null,
@@ -125,6 +179,7 @@ export class AdminClubPage {
     website: ['', Validators.maxLength(120)],
     timezone: ['Europe/Bucharest', Validators.required],
     smsEnabled: [false],
+    kioskVolume: [60],
   });
 
   constructor() {
@@ -132,6 +187,11 @@ export class AdminClubPage {
       const club = this.club.value();
       if (club) this.form.setValue(club);
     });
+  }
+
+  /** Plays a check-in sound at the slider's volume (before saving). */
+  protected test(tone: FeedbackTone): void {
+    this.sound.preview(tone, this.form.controls.kioskVolume.value);
   }
 
   protected invalid(name: 'name' | 'email'): boolean {

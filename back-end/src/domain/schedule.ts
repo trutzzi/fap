@@ -21,7 +21,10 @@ export function trainingState(date: string, slot: SlotTiming, now: Date): Traini
 
 /**
  * Picks the training a check-in made `now` belongs to among today's slots: one that is
- * running or starts within the check-in window, preferring the member's own courses.
+ * running or starts within the check-in window, preferring the member's own courses and,
+ * among those, the latest to start. So once the next training's window opens (30 min
+ * before it), a member of both courses checks in to the next one, not the one still
+ * running: Karate 17:00 + BJJ 18:00, tap at 17:35 → BJJ. Each training is its own check-in.
  */
 export function currentSlot<T extends SlotTiming & { courseId: string }>(
   todaysSlots: T[],
@@ -35,7 +38,9 @@ export function currentSlot<T extends SlotTiming & { courseId: string }>(
       return nowMin >= start - CHECKIN_WINDOW_BEFORE_MIN && nowMin < start + s.durationMin;
     })
     .sort((a, b) => a.time.localeCompare(b.time));
-  return candidates.find((s) => courseIds.includes(s.courseId)) ?? candidates.at(-1) ?? null;
+  return (
+    candidates.filter((s) => courseIds.includes(s.courseId)).at(-1) ?? candidates.at(-1) ?? null
+  );
 }
 
 /** "Luni – Vineri · 20:00", "Marți, Joi · 17:00 / Sâmbătă · 14:00" */

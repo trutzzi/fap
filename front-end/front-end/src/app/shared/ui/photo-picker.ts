@@ -61,10 +61,21 @@ import { MemberAvatar } from './member-avatar';
             playsinline
             muted
             aria-label="Previzualizare cameră"
+            [class.mirrored]="facing() === 'user'"
             [style.width.px]="size()"
           ></video>
           <div class="choices">
             <button type="button" class="btn btn-primary" (click)="capture()">Fotografiază</button>
+            <button
+              type="button"
+              class="btn"
+              [attr.aria-label]="
+                facing() === 'user' ? 'Folosește camera din spate' : 'Folosește camera din față'
+              "
+              (click)="switchCamera()"
+            >
+              {{ facing() === 'user' ? 'Camera din spate' : 'Camera frontală' }}
+            </button>
             <button type="button" class="btn btn-ghost" (click)="reset()">Înapoi</button>
           </div>
         }
@@ -94,7 +105,7 @@ import { MemberAvatar } from './member-avatar';
       background: var(--bg);
       border: 1px solid var(--border-strong);
     }
-    video {
+    video.mirrored {
       transform: scaleX(-1); /* mirror the selfie preview; the photo itself is not mirrored */
     }
     .choices {
@@ -117,6 +128,8 @@ export class PhotoPicker {
   protected readonly mode = signal<'choose' | 'camera' | 'preview'>('choose');
   protected readonly preview = signal<{ blob: Blob; url: string } | null>(null);
   protected readonly error = signal<string | null>(null);
+  /** `user`: front (selfie) camera; `environment`: back camera. */
+  protected readonly facing = signal<'user' | 'environment'>('user');
   private stream: MediaStream | null = null;
 
   constructor() {
@@ -149,15 +162,27 @@ export class PhotoPicker {
     this.error.set(null);
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 } },
+        video: { facingMode: this.facing(), width: { ideal: 1280 } },
         audio: false,
       });
+      // Switching cameras keeps the same <video>: attach the new stream right away.
+      const video = this.video()?.nativeElement;
+      if (video) {
+        video.srcObject = this.stream;
+        void video.play();
+      }
       this.mode.set('camera');
     } catch {
       this.error.set(
         'Camera nu este disponibilă. Verifică permisiunea browserului sau încarcă un fișier.',
       );
     }
+  }
+
+  protected async switchCamera(): Promise<void> {
+    this.stopCamera();
+    this.facing.update((f) => (f === 'user' ? 'environment' : 'user'));
+    await this.startCamera();
   }
 
   protected async capture(): Promise<void> {

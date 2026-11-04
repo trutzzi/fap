@@ -6,6 +6,7 @@ import {
   ElementRef,
   afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -75,6 +76,11 @@ export class KioskPage {
     () => null,
     () => this.academy.kioskStatus(),
   );
+  /** The club's kiosk volume (refreshed with the status, so a change applies within a minute). */
+  private readonly club = createQuery(
+    () => null,
+    () => this.academy.club(),
+  );
   protected readonly result = signal<CheckInResult | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
@@ -116,7 +122,14 @@ export class KioskPage {
   private resetTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    onInterval(STATUS_REFRESH_MS, () => this.status.reload());
+    onInterval(STATUS_REFRESH_MS, () => {
+      this.status.reload();
+      this.club.reload();
+    });
+    effect(() => {
+      const volume = this.club.value()?.kioskVolume;
+      if (volume !== undefined) this.sound.volume.set(volume);
+    });
     afterNextRender(() => {
       this.focusReader();
       void qrCameraSupported().then((supported) => this.cameraSupported.set(supported));

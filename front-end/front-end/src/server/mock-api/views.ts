@@ -304,7 +304,10 @@ export class Views {
         return nowMin >= start - CHECKIN_WINDOW_BEFORE_MIN && nowMin < start + s.durationMin;
       })
       .sort((a, b) => a.time.localeCompare(b.time));
-    return candidates.find((s) => courseIds.includes(s.courseId)) ?? candidates.at(-1) ?? null;
+    // Latest own training in the window: the next one wins once its window opens.
+    return (
+      candidates.filter((s) => courseIds.includes(s.courseId)).at(-1) ?? candidates.at(-1) ?? null
+    );
   }
 
   currentTraining(): CurrentTraining | null {

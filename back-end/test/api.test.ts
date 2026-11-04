@@ -139,6 +139,35 @@ describe('check-in', () => {
     expect(await db.checkIn.count({ where: { memberId: id } })).toBe(12);
   });
 
+  it('checks a member of two courses in to each training separately', async () => {
+    await db.course.create({ data: { id: 'bjj', name: 'BJJ', color: '#3b82f6', coach: 'X' } });
+    await db.trainingSlot.create({
+      data: {
+        id: 'bjj-wed',
+        courseId: 'bjj',
+        weekday: 3,
+        time: '21:00',
+        durationMin: 60,
+        capacity: 30,
+      },
+    });
+    await createMember({ courseIds: ['kb', 'bjj'] });
+
+    setNow(new Date(2026, 9, 14, 20, 5)); // Kickboxing 20:00 is running
+    const first = await api.post('/api/checkins').send({ rfid: '04A391F2' }).expect(200);
+    expect(first.body).toMatchObject({ outcome: 'allowed', trainingLabel: 'Kickboxing' });
+
+    setNow(new Date(2026, 9, 14, 20, 35)); // BJJ 21:00 is within 30 minutes
+    const second = await api.post('/api/checkins').send({ rfid: '04A391F2' }).expect(200);
+    expect(second.body).toMatchObject({
+      outcome: 'allowed',
+      trainingLabel: 'BJJ',
+      member: { subscription: { used: 2 } },
+    });
+    const again = await api.post('/api/checkins').send({ rfid: '04A391F2' }).expect(200);
+    expect(again.body.outcome).toBe('already-checked-in');
+  });
+
   it('counts concurrent taps only once', async () => {
     await createMember();
     const results = await Promise.all(

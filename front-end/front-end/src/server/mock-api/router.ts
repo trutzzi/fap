@@ -122,6 +122,7 @@ export function createMockApi(db: Db = seed()): express.Router {
     website: 'fightacademy.ro',
     timezone: 'Europe/Bucharest',
     smsEnabled: false,
+    kioskVolume: 60,
   };
   const api = express.Router();
   api.use(express.json());
@@ -422,6 +423,8 @@ export function createMockApi(db: Db = seed()): express.Router {
       website: text(b, 'website', 'Site-ul', { required: false, max: 120 }),
       timezone,
       smsEnabled: b['smsEnabled'] === true,
+      kioskVolume:
+        b['kioskVolume'] === undefined ? 60 : integer(b, 'kioskVolume', 'Volumul', 0, 100),
     };
     res.json(club);
   });
