@@ -4,11 +4,12 @@ import { finalize } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
+import { SmsCreditInfo } from '../../shared/ui/sms-credit';
 import { FeedbackSound, FeedbackTone } from '../../core/util/feedback-sound';
 
 @Component({
   selector: 'app-admin-club-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, SmsCreditInfo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card club" aria-labelledby="club-title">
@@ -100,6 +101,7 @@ import { FeedbackSound, FeedbackTone } from '../../core/util/feedback-sound';
             Un singur SMS pe perioadă de abonament, între 10:00 și 20:00. Necesită contul SMSLink
             configurat pe server; erorile apar în pagina de logs.
           </span>
+          <app-sms-credit />
         </div>
         <fieldset class="field">
           <legend>Sunete kiosk</legend>

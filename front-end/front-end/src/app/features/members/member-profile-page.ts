@@ -18,7 +18,6 @@ import {
   CheckInMethod,
   CheckInRecord,
   MemberAccessResult,
-  PeriodPaymentStatus,
   PlanId,
   SubscriptionPeriod,
 } from '../../core/api/models';
@@ -41,6 +40,7 @@ import { MemberAccessDialog } from '../../shared/dialogs/member-access-dialog';
 import { MemberFormDialog } from '../../shared/dialogs/member-form-dialog';
 import { PhotoDialog } from '../../shared/dialogs/photo-dialog';
 import { PaymentDialog } from '../../shared/dialogs/payment-dialog';
+import { MemberPeriods } from './member-periods';
 import { RfidDialog } from '../../shared/dialogs/rfid-dialog';
 import { SubscriptionDialog } from '../../shared/dialogs/subscription-dialog';
 import { IsoDatePipe, RfidPipe } from '../../shared/ui/formatting';
@@ -66,13 +66,6 @@ const METHOD_LABELS: Record<CheckInMethod, string> = {
   manual: 'Manual · recepție',
 };
 
-const PERIOD_BADGE: Record<PeriodPaymentStatus, { label: string; tone: string }> = {
-  paid: { label: 'Plătit', tone: 'badge--success' },
-  partial: { label: 'Parțial', tone: 'badge--warning' },
-  unpaid: { label: 'Neplătit', tone: 'badge--danger' },
-  'no-price': { label: 'Fără preț', tone: 'badge--muted' },
-};
-
 interface CalendarCell {
   day: number | null;
   present: boolean;
@@ -96,6 +89,7 @@ interface CalendarCell {
     ConfirmDialog,
     PhotoDialog,
     PaymentDialog,
+    MemberPeriods,
     MemberAccessDialog,
     MemberAvatar,
   ],
@@ -124,7 +118,6 @@ export class MemberProfilePage {
   protected readonly dialog = signal<ProfileDialog | null>(null);
   protected readonly upgradePlan = signal<PlanId | null>(null);
   protected readonly paying = signal<SubscriptionPeriod | null>(null);
-  protected readonly periodBadge = PERIOD_BADGE;
   protected readonly methodLabels = METHOD_LABELS;
   /** Result of the last "send password" action, shown in a dialog. */
   protected readonly accessResult = signal<MemberAccessResult | null>(null);

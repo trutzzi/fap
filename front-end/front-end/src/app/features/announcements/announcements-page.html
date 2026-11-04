@@ -92,6 +92,21 @@
         }
       </fieldset>
 
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" formControlName="sms" />
+          Trimite și prin SMS
+        </label>
+        <span class="field-hint">
+          Un singur SMS pe număr de telefon (titlul, începutul mesajului și linkul către cont), deci
+          se plătește câte un SMS pentru fiecare destinatar. Necesită contul SMSLink configurat pe
+          server.
+        </span>
+        @if (form.controls.sms.value) {
+          <app-sms-credit [need]="preview.value()?.smsCount ?? null" />
+        }
+      </div>
+
       <div class="form-footer">
         <button type="submit" class="btn btn-primary" [disabled]="sending()">
           {{ sending() ? 'Se trimite…' : 'Trimite anunțul' }}
@@ -119,6 +134,17 @@
             }
             · {{ a.audienceLabel }} · citit de {{ a.read }} din {{ a.recipients }}
           </p>
+          @if (a.sms; as s) {
+            <p class="meta" [class.warn]="s.failed > 0">
+              @if (s.sent + s.failed < s.recipients) {
+                SMS: se trimit… {{ s.sent + s.failed }} din {{ s.recipients }}
+              } @else {
+                SMS: {{ s.sent }} trimise{{
+                  s.failed ? ' · ' + s.failed + ' eșuate (vezi logs)' : ''
+                }}
+              }
+            </p>
+          }
         </li>
       } @empty {
         <li class="state-message">

@@ -1,7 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { FinanceSummary, NewPaymentInput, Payment, PaymentMethod } from './models';
+import {
+  FinanceSummary,
+  NewPaymentInput,
+  Payment,
+  PaymentMethod,
+  PeriodPriceInput,
+  SubscriptionPeriod,
+} from './models';
 
 export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Numerar' },
@@ -28,6 +35,17 @@ export class FinanceService {
     return this.http.post<Payment>('/api/payments', input);
   }
 
+  /** A member's payments, newest first. */
+  memberPayments(memberId: string): Observable<Payment[]> {
+    return this.http.get<Payment[]>(`/api/members/${encodeURIComponent(memberId)}/payments`);
+  }
+
+  /** Admin: corrects a sold period's price (`null` clears it). */
+  setPeriodPrice(periodId: string, input: PeriodPriceInput): Observable<SubscriptionPeriod> {
+    return this.http.put<SubscriptionPeriod>(`/api/periods/${encodeURIComponent(periodId)}`, input);
+  }
+
+  /** Admin only. */
   deletePayment(id: string): Observable<void> {
     return this.http.delete<void>(`/api/payments/${encodeURIComponent(id)}`);
   }

@@ -6,7 +6,7 @@ import { EXPIRING_WITHIN_DAYS, isActive } from '../../domain/membership.js';
 import { today as todayOf } from '../../lib/clock.js';
 import { addMonthsToMonth, daysBetween, toIsoDate, toMonth } from '../../lib/dates.js';
 import { badRequest, notFound } from '../../lib/http-error.js';
-import { monthSchema, newPaymentSchema, parse } from '../../lib/validation.js';
+import { monthSchema, newPaymentSchema, parse, periodPriceSchema } from '../../lib/validation.js';
 import { assertAdmin } from '../auth/auth.middleware.js';
 import { loadSummaries } from '../members/member-queries.js';
 import { paymentInclude, periodInclude, toPayment, toPeriod } from './periods.js';
@@ -155,6 +155,38 @@ export function financeRouter({ db, clock }: Deps): Router {
       include: paymentInclude,
     });
     res.status(201).json(toPayment(payment));
+  });
+
+  /** A member's payments, newest first (profile → "Abonamente și plăți"). */
+  router.get('/members/:id/payments', async (req, res) => {
+    const rows = await db.payment.findMany({
+      where: { memberId: req.params.id },
+      include: paymentInclude,
+      orderBy: { paidAt: 'desc' },
+      take: 200,
+    });
+    res.json(rows.map(toPayment));
+  });
+
+  /** Admin: corrects a sold period's price (or clears it). */
+  router.put('/periods/:id', async (req, res) => {
+    assertAdmin(req);
+    const { price } = parse(periodPriceSchema, req.body);
+    const period = await db.subscriptionPeriod.findUnique({
+      where: { id: req.params.id },
+      select: { memberId: true },
+    });
+    if (!period) throw notFound('Perioada de abonament nu a fost găsită.');
+    const updated = await db.subscriptionPeriod.update({
+      where: { id: req.params.id },
+      data: { price },
+      include: periodInclude,
+    });
+    const current = await db.subscription.findUnique({
+      where: { memberId: period.memberId },
+      select: { startDate: true },
+    });
+    res.json(toPeriod(updated, current ? fromDbDate(current.startDate) : null));
   });
 
   /** Corrections only: deleting money records is admin-only. */

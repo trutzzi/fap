@@ -6,16 +6,17 @@ import type { Deps } from '../../deps.js';
 import { parseQrToken, verifyQrToken } from '../../domain/member-access.js';
 import { normalizeRfid } from '../../domain/membership.js';
 import { currentSlot } from '../../domain/schedule.js';
-import { isoWeekday, toIsoDate } from '../../lib/dates.js';
+import { formatDate, isoWeekday, toIsoDate } from '../../lib/dates.js';
 import { notFound } from '../../lib/http-error.js';
 import { checkInSchema, parse } from '../../lib/validation.js';
 import { loadSummary } from '../members/member-queries.js';
+import { notifyMembers, type NotificationInput } from '../notifications/notify.js';
 
 /** Without a matching training, a repeat check-in within this window counts as a duplicate. */
 const DUPLICATE_WINDOW_MS = 2 * 3_600_000;
 
 /** Kiosk status and check-in (card scan, member QR code, or manual at reception). */
-export function checkInsRouter({ db, clock }: Deps): Router {
+export function checkInsRouter({ db, clock, push }: Deps): Router {
   const router = Router();
 
   const todaysSlots = (now: Date) =>
@@ -126,8 +127,47 @@ export function checkInsRouter({ db, clock }: Deps): Router {
       });
       return { ...reply('allowed'), member: (await loadSummary(tx, member.id, today))! };
     });
+    const notification = checkInNotification(result);
+    if (notification) await notifyMembers({ db, push, clock }, [result.member!.id], notification);
     res.json(result);
   });
 
   return router;
+}
+
+/** What the member's phone shows after a scan; nothing for repeats and unknown cards. */
+function checkInNotification(result: CheckInResult): NotificationInput | null {
+  const sub = result.member?.subscription ?? null;
+  const training = result.trainingLabel ?? 'Acces liber';
+  switch (result.outcome) {
+    case 'allowed':
+      return {
+        kind: 'checkin',
+        title: 'Check-in confirmat',
+        body:
+          sub?.sessionLimit != null
+            ? `${training} · ședința ${sub.used} din ${sub.sessionLimit}`
+            : `${training} · abonament nelimitat`,
+      };
+    case 'limit':
+      return {
+        kind: 'refused',
+        title: 'Check-in refuzat',
+        body: 'Ai folosit toate ședințele din abonament. Reînnoiește-l la recepție.',
+      };
+    case 'expired':
+      return {
+        kind: 'refused',
+        title: 'Check-in refuzat',
+        body: `Abonamentul a expirat${sub ? ` pe ${formatDate(sub.endDate)}` : ''}. Reînnoiește-l la recepție.`,
+      };
+    case 'no-subscription':
+      return {
+        kind: 'refused',
+        title: 'Check-in refuzat',
+        body: 'Nu ai un abonament activ. Te rugăm să mergi la recepție.',
+      };
+    default:
+      return null;
+  }
 }

@@ -43,6 +43,9 @@
             <strong>{{ u.name }}</strong>
             <span class="muted">{{ roleLabel() }}</span>
           </span>
+          @if (isStaff()) {
+            <app-staff-bell />
+          }
           <button
             type="button"
             class="btn btn-sm btn-ghost"

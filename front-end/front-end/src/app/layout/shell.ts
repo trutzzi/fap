@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import { Role } from '../core/api/models';
 import { ROLE_LABELS, AuthService } from '../core/auth/auth.service';
 import { PasswordDialog } from '../shared/dialogs/password-dialog';
+import { StaffBell } from './staff-bell';
 import { Icon, IconName } from '../shared/ui/icon';
 
 interface NavItem {
@@ -33,7 +34,15 @@ const NAV: NavItem[] = [
 /** Staff layout: brand sidebar, navigation, signed-in user + routed page. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgOptimizedImage, Icon, PasswordDialog],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    NgOptimizedImage,
+    Icon,
+    PasswordDialog,
+    StaffBell,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   styleUrl: './shell.css',
@@ -45,6 +54,7 @@ export class Shell {
 
   protected readonly user = this.auth.user;
   protected readonly changingPassword = signal(false);
+  protected readonly isStaff = this.auth.isStaff;
   protected readonly roleLabel = computed(() => {
     const role = this.user()?.role;
     return role ? ROLE_LABELS[role] : '';

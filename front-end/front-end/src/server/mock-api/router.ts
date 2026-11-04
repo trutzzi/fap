@@ -13,6 +13,12 @@ import {
   AnnouncementAudience,
   BulkDeleteResult,
   MemberAnnouncement,
+  MemberNotification,
+  AnnouncementPreview,
+  SmsCredit,
+  PushConfig,
+  StaffEvent,
+  StaffNotifications,
   STAFF_PASSWORD_MIN_LENGTH,
   StaffAccount,
   CourseInput,
@@ -30,7 +36,14 @@ import { isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
 import { DEMO_USERS, MockSessions } from './auth';
 import { MockFinance } from './finance';
 import { MockReports } from './reports';
-import { AnnouncementEntity, Db, MemberEntity, nextId, normalizeRfid } from './db';
+import {
+  AnnouncementEntity,
+  Db,
+  MemberEntity,
+  NotificationEntity,
+  nextId,
+  normalizeRfid,
+} from './db';
 import {
   MockMemberSessions,
   QR_STEP_MS,
@@ -290,6 +303,37 @@ export function createMockApi(db: Db = seed()): express.Router {
     res.status(204).end();
   });
 
+  api.get('/account/notifications', (req, res) => {
+    const member = portalMember(req);
+    const list: MemberNotification[] = db.notifications
+      .filter((n) => n.memberId === member.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 50)
+      .map(({ id, kind, title, body, createdAt, readAt }) => ({
+        id,
+        kind,
+        title,
+        body,
+        createdAt,
+        read: readAt !== null,
+      }));
+    res.json(list);
+  });
+
+  api.post('/account/notifications/read', (req, res) => {
+    const member = portalMember(req);
+    const now = new Date().toISOString();
+    for (const n of db.notifications) if (n.memberId === member.id && !n.readAt) n.readAt = now;
+    res.status(204).end();
+  });
+
+  // The mock has no push service: the portal hides the "turn on notifications" button.
+  api.get('/account/push', (req, res) => {
+    portalMember(req);
+    const body: PushConfig = { publicKey: null };
+    res.json(body);
+  });
+
   api.put('/account/pin', (req, res) => {
     const member = portalMember(req);
     const b = (req.body ?? {}) as Body;
@@ -330,6 +374,51 @@ export function createMockApi(db: Db = seed()): express.Router {
       sessions.user(req)?.role !== 'coach' ||
       coachAllowed.some(([method, path]) => method === req.method && path.test(req.path));
     next(ok ? undefined : new HttpError(403, 'Nu ai drepturi pentru această acțiune.'));
+  });
+
+  // ---- Staff bell (admin and reception) ----
+
+  /** Last time each staff user opened the bell. */
+  const bellSeen = new Map<string, string>();
+
+  api.get('/notifications', (req, res) => {
+    const name = (id: string) => {
+      const m = db.members.find((x) => x.id === id);
+      return m ? `${m.firstName} ${m.lastName}` : null;
+    };
+    const refusal = {
+      limit: 'Refuzat: limită de ședințe atinsă',
+      expired: 'Refuzat: abonament expirat',
+      'no-subscription': 'Refuzat: fără abonament',
+    };
+    const items: StaffEvent[] = [
+      ...db.checkins.map((c) => ({
+        id: `c-${c.id}`,
+        kind: 'checkin' as const,
+        at: c.timestamp,
+        memberId: c.memberId,
+        memberName: name(c.memberId),
+        text: `Check-in · ${c.trainingLabel ?? 'Acces liber'}`,
+      })),
+      ...db.refusedScans.map((r) => ({
+        id: `r-${r.id}`,
+        kind: 'refused' as const,
+        at: r.timestamp,
+        memberId: r.memberId,
+        memberName: name(r.memberId),
+        text: `${refusal[r.reason]}${r.trainingLabel ? ` · ${r.trainingLabel}` : ''}`,
+      })),
+    ]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 40);
+    const seen = bellSeen.get(sessions.user(req)!.id) ?? '';
+    const body: StaffNotifications = { items, unread: items.filter((i) => i.at > seen).length };
+    res.json(body);
+  });
+
+  api.post('/notifications/seen', (req, res) => {
+    bellSeen.set(sessions.user(req)!.id, new Date().toISOString());
+    res.status(204).end();
   });
 
   api.get('/trainings/today', (req, res) => {
@@ -723,6 +812,32 @@ export function createMockApi(db: Db = seed()): express.Router {
       .json(finance.pay(member.id, periodId, parsePayment(b), sessions.user(req)!.name));
   });
 
+  api.get('/members/:id/payments', (req, res) => {
+    const member = findMember(req.params['id']);
+    res.json(
+      db.payments
+        .filter((p) => p.memberId === member.id)
+        .sort((a, b) => b.paidAt.localeCompare(a.paidAt))
+        .map((p) => finance.toPayment(p.id)),
+    );
+  });
+
+  api.put('/periods/:id', (req, res) => {
+    assertAdmin(req);
+    const period = db.periods.find((p) => p.id === req.params['id']);
+    if (!period) throw new HttpError(404, 'Perioada de abonament nu a fost găsită.');
+    const price = ((req.body ?? {}) as Body)['price'];
+    if (
+      price !== null &&
+      (typeof price !== 'number' || !Number.isInteger(price) || price < 0 || price > 100_000)
+    ) {
+      throw badRequest('Prețul este invalid.');
+    }
+    period.price = price as number | null;
+    const current = db.members.find((m) => m.id === period.memberId)?.subscription?.startDate;
+    res.json(finance.toPeriod(period, current ?? null));
+  });
+
   api.delete('/payments/:id', (req, res) => {
     assertAdmin(req);
     db.payments = db.payments.filter((p) => p.id !== req.params['id']);
@@ -803,6 +918,30 @@ export function createMockApi(db: Db = seed()): express.Router {
     );
   });
 
+  // ---- Member notifications (inbox only in the mock) ----
+
+  const notify = (
+    memberId: string,
+    kind: NotificationEntity['kind'],
+    title: string,
+    body: string,
+  ) => {
+    db.notifications.push({
+      id: nextId('ntf'),
+      memberId,
+      kind,
+      title,
+      body,
+      createdAt: new Date().toISOString(),
+      readAt: null,
+    });
+  };
+  const refusalText = {
+    limit: 'Ai folosit toate ședințele din abonament. Reînnoiește-l la recepție.',
+    expired: 'Abonamentul a expirat. Reînnoiește-l la recepție.',
+    'no-subscription': 'Nu ai un abonament activ. Te rugăm să mergi la recepție.',
+  };
+
   // ---- Kiosk & check-in ----
 
   api.get('/kiosk/status', (_req, res) => {
@@ -863,6 +1002,7 @@ export function createMockApi(db: Db = seed()): express.Router {
           reason,
         });
       }
+      notify(memberId, 'refused', 'Check-in refuzat', refusalText[reason]);
       return reply(reason, label);
     };
     if (summary.status === 'none' || summary.subscription!.startDate > today) {
@@ -880,6 +1020,7 @@ export function createMockApi(db: Db = seed()): express.Router {
     if (duplicate) return reply('already-checked-in', label);
     if (summary.status === 'limit') return refuse('limit');
 
+    notify(memberId, 'checkin', 'Check-in confirmat', `${label ?? 'Acces liber'}`);
     db.checkins.push({
       id: nextId('chk'),
       memberId,
@@ -895,6 +1036,7 @@ export function createMockApi(db: Db = seed()): express.Router {
   // ---- Announcements (staff → members) ----
 
   const announcementView = (a: AnnouncementEntity): Announcement => ({
+    sms: a.smsRecipients ? { recipients: a.smsRecipients, sent: 0, failed: a.smsRecipients } : null,
     id: a.id,
     title: a.title,
     body: a.body,
@@ -962,9 +1104,45 @@ export function createMockApi(db: Db = seed()): express.Router {
       createdAt: new Date().toISOString(),
       createdBy: sessions.user(req)!.name,
       recipients: memberIds.map((memberId) => ({ memberId, readAt: null })),
+      smsRecipients:
+        b['sms'] === true
+          ? new Set(
+              db.members.filter((m) => memberIds.includes(m.id)).map((m) => phoneKey(m.phone)),
+            ).size
+          : 0,
     };
     db.announcements.push(entity);
+    for (const memberId of memberIds) {
+      notify(memberId, 'announcement', `Anunț nou: ${title}`, body.slice(0, 140));
+    }
     res.status(201).json(announcementView(entity));
+  });
+
+  api.post('/announcements/preview', (req, res) => {
+    const audience = ((req.body ?? {}) as Body)['audience'] as Record<string, unknown> | undefined;
+    const ids =
+      audience?.['kind'] === 'course'
+        ? db.members
+            .filter((m) => m.courseIds.includes(String(audience['courseId'])))
+            .map((m) => m.id)
+        : audience?.['kind'] === 'members' && Array.isArray(audience['memberIds'])
+          ? (audience['memberIds'] as string[])
+          : audience?.['kind'] === 'active'
+            ? db.members
+                .filter((m) => ['active', 'expiring', 'limit'].includes(views.summary(m).status))
+                .map((m) => m.id)
+            : db.members.map((m) => m.id);
+    const phones = new Set(
+      db.members.filter((m) => ids.includes(m.id)).map((m) => phoneKey(m.phone)),
+    );
+    const body: AnnouncementPreview = { recipients: ids.length, smsCount: phones.size };
+    res.json(body);
+  });
+
+  // The mock has no SMS provider.
+  api.get('/sms/credit', (_req, res) => {
+    const body: SmsCredit = { configured: false, credit: null, error: null };
+    res.json(body);
   });
 
   api.delete('/announcements/:id', (req, res) => {

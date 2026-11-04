@@ -285,6 +285,12 @@ export interface SubscriptionPeriod {
   current: boolean;
 }
 
+/** `PUT /api/periods/:id` (admin): corrects the agreed price of a sold period. */
+export interface PeriodPriceInput {
+  /** Whole lei; `null` clears it ("no price"). */
+  price: number | null;
+}
+
 export interface Payment {
   id: string;
   memberId: string;
@@ -534,6 +540,8 @@ export interface MemberAccount {
   history: CheckInRecord[];
   /** Announcements the member hasn't opened yet. */
   unreadAnnouncements: number;
+  /** Notifications (check-ins, reminders, announcements) not seen yet. */
+  unreadNotifications: number;
   joinedAt: string;
   stats: MemberStats;
 }
@@ -668,6 +676,8 @@ export interface NewAnnouncementInput {
   title: string;
   body: string;
   audience: AnnouncementAudience;
+  /** Also text it: one SMS per phone number (title, start of the text, link to /cont). */
+  sms?: boolean;
 }
 
 /** A sent announcement as staff see it (`GET /api/announcements`, newest first). */
@@ -682,6 +692,8 @@ export interface Announcement {
   recipients: number;
   /** Recipients who have opened it in the member portal. */
   read: number;
+  /** When also sent by SMS: progress (sent + failed < recipients while sending). */
+  sms: { recipients: number; sent: number; failed: number } | null;
 }
 
 /** An announcement as the member sees it (`GET /api/account/announcements`). */
@@ -691,4 +703,69 @@ export interface MemberAnnouncement {
   body: string;
   createdAt: string;
   read: boolean;
+}
+
+// ---- Notifications ----
+
+/** `checkin`: admitted; `refused`: scan refused; `reminder`: subscription ends soon. */
+export type MemberNotificationKind = 'checkin' | 'refused' | 'reminder' | 'announcement';
+
+/** The member portal's inbox (`GET /api/account/notifications`), newest first. */
+export interface MemberNotification {
+  id: string;
+  kind: MemberNotificationKind;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+}
+
+/** Web Push: the server's public VAPID key (`null` when push is unavailable). */
+export interface PushConfig {
+  publicKey: string | null;
+}
+
+/** A browser push subscription (`PushSubscription.toJSON()`), sent by the member portal. */
+export interface PushSubscriptionInput {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export type StaffEventKind = 'checkin' | 'refused' | 'sms-sent' | 'sms-failed';
+
+/** One line of the staff bell's feed. */
+export interface StaffEvent {
+  id: string;
+  kind: StaffEventKind;
+  at: string;
+  memberId: string | null;
+  memberName: string | null;
+  /** "Kickboxing · ședința 9/12", "Abonament expirat", "SMS reamintire către 0722…". */
+  text: string;
+}
+
+/** `GET /api/notifications` (admin and reception), newest first. */
+export interface StaffNotifications {
+  items: StaffEvent[];
+  /** Items newer than the last time this user opened the bell. */
+  unread: number;
+}
+
+// ---- SMS credit ----
+
+/** `GET /api/sms/credit` (admin and reception): SMS left in the SMSLink account. */
+export interface SmsCredit {
+  /** SMSLink credentials are set on the server. */
+  configured: boolean;
+  /** Number of SMS that can still be sent; `null` when unknown. */
+  credit: number | null;
+  /** Why the credit could not be read, for staff. */
+  error: string | null;
+}
+
+/** `POST /api/announcements/preview`: what sending to this audience would mean. */
+export interface AnnouncementPreview {
+  recipients: number;
+  /** SMS that would be sent: one per unique phone number. */
+  smsCount: number;
 }

@@ -22,6 +22,7 @@ import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { addDays, addMonths, isIsoDate, toIsoDate } from '../../core/util/dates';
 import { IsoDatePipe } from '../ui/formatting';
+import { DateInput } from '../ui/date-input';
 import { Modal } from '../ui/modal';
 
 /**
@@ -30,7 +31,7 @@ import { Modal } from '../ui/modal';
  */
 @Component({
   selector: 'app-subscription-dialog',
-  imports: [Modal, ReactiveFormsModule, IsoDatePipe],
+  imports: [Modal, ReactiveFormsModule, IsoDatePipe, DateInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-modal
@@ -61,7 +62,7 @@ import { Modal } from '../ui/modal';
         </fieldset>
         <div class="field">
           <label for="subscription-start">Începe la</label>
-          <input id="subscription-start" class="input" type="date" formControlName="startDate" />
+          <app-date-input inputId="subscription-start" formControlName="startDate" />
           @if (endDate(); as end) {
             <span class="field-hint">Valabil până la {{ end | isoDate }} inclusiv.</span>
           }

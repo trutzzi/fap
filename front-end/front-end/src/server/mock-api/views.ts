@@ -144,6 +144,9 @@ export class Views {
       unreadAnnouncements: this.db.announcements.filter((a) =>
         a.recipients.some((r) => r.memberId === member.id && r.readAt === null),
       ).length,
+      unreadNotifications: this.db.notifications.filter(
+        (n) => n.memberId === member.id && n.readAt === null,
+      ).length,
       joinedAt: member.joinedAt,
       stats: memberStats(
         this.db.checkins

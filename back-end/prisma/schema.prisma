@@ -35,22 +35,24 @@ enum Role {
 
 /// Staff account. Created with `npm run user:create`.
 model User {
-  id               String               @id @default(cuid())
+  id                  String               @id @default(cuid())
   /// Stored lowercase.
-  email            String               @unique
-  name             String
+  email               String               @unique
+  name                String
   /// `scrypt$N$r$p$salt$hash`, see src/lib/password.ts.
-  passwordHash     String               @map("password_hash")
-  role             Role
-  active           Boolean              @default(true)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  lastLoginAt      DateTime?            @map("last_login_at") @db.Timestamptz
-  sessions         Session[]
-  soldPeriods      SubscriptionPeriod[]
-  receivedPayments Payment[]
+  passwordHash        String               @map("password_hash")
+  role                Role
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  lastLoginAt         DateTime?            @map("last_login_at") @db.Timestamptz
+  sessions            Session[]
+  soldPeriods         SubscriptionPeriod[]
+  receivedPayments    Payment[]
   /// Courses this user coaches (role `coach`).
-  coachedCourses   Course[]
-  announcements    Announcement[]
+  coachedCourses      Course[]
+  announcements       Announcement[]
+  /// Newest staff-feed event this user has seen (the bell's unread count).
+  notificationsSeenAt DateTime?            @map("notifications_seen_at") @db.Timestamptz
 
   @@map("users")
 }
@@ -155,31 +157,34 @@ model TrainingSlot {
 }
 
 model Member {
-  id            String                  @id @default(cuid())
-  firstName     String                  @map("first_name")
-  lastName      String                  @map("last_name")
-  phone         String
-  email         String                  @default("")
+  id                String                  @id @default(cuid())
+  firstName         String                  @map("first_name")
+  lastName          String                  @map("last_name")
+  phone             String
+  email             String                  @default("")
   /// Normalized card code: uppercase hex, no separators.
-  rfid          String?                 @unique
-  joinedAt      DateTime                @map("joined_at") @db.Date
+  rfid              String?                 @unique
+  joinedAt          DateTime                @map("joined_at") @db.Date
   /// GDPR consent to store a photo (for minors: a parent's consent). Required for `photo`.
-  photoConsent  Boolean                 @default(false) @map("photo_consent")
+  photoConsent      Boolean                 @default(false) @map("photo_consent")
   /// Member portal password (generated and sent by SMS); null until one is issued.
-  passwordHash  String?                 @map("password_hash")
+  passwordHash      String?                 @map("password_hash")
   /// HMAC key of the member's rotating QR code; created on first use.
-  qrSecret      String?                 @map("qr_secret")
-  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz
-  courses       MemberCourse[]
-  subscription  Subscription?
-  checkIns      CheckIn[]
-  photo         MemberPhoto?
-  periods       SubscriptionPeriod[]
-  payments      Payment[]
-  refusedScans  RefusedScan[]
-  sessions      MemberSession[]
-  announcements AnnouncementRecipient[]
+  qrSecret          String?                 @map("qr_secret")
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  courses           MemberCourse[]
+  subscription      Subscription?
+  checkIns          CheckIn[]
+  photo             MemberPhoto?
+  periods           SubscriptionPeriod[]
+  payments          Payment[]
+  refusedScans      RefusedScan[]
+  sessions          MemberSession[]
+  announcements     AnnouncementRecipient[]
+  notifications     MemberNotification[]
+  pushSubscriptions PushSubscription[]
+  smsMessages       SmsMessage[]
 
   @@index([lastName, firstName])
   @@map("members")
@@ -352,6 +357,10 @@ model Announcement {
   body          String
   /// How the recipients were chosen, e.g. "Toți membrii" or "Curs: Kickboxing".
   audienceLabel String                  @map("audience_label")
+  /// Unique phone numbers texted when it was also sent by SMS; 0 when not.
+  smsRecipients Int                     @default(0) @map("sms_recipients")
+  smsSent       Int                     @default(0) @map("sms_sent")
+  smsFailed     Int                     @default(0) @map("sms_failed")
   createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
   createdById   String?                 @map("created_by_id")
   createdBy     User?                   @relation(fields: [createdById], references: [id], onDelete: SetNull)
@@ -372,4 +381,64 @@ model AnnouncementRecipient {
   @@id([announcementId, memberId])
   @@index([memberId])
   @@map("announcement_recipients")
+}
+
+enum SmsKind {
+  pin
+  reminder
+  announcement
+}
+
+/// Every SMS the app tried to send (staff feed); the text is not kept (it may hold a PIN).
+model SmsMessage {
+  id        String   @id @default(cuid())
+  memberId  String?  @map("member_id")
+  member    Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  /// Recipient as sent to SMSLink (07…).
+  to        String
+  kind      SmsKind
+  sent      Boolean
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("sms_messages")
+}
+
+/// The member portal's inbox; each is also pushed to the member's devices.
+model MemberNotification {
+  id        String    @id @default(cuid())
+  memberId  String    @map("member_id")
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  /// checkin | refused | reminder | announcement
+  kind      String
+  title     String
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  readAt    DateTime? @map("read_at") @db.Timestamptz
+
+  @@index([memberId, createdAt])
+  @@map("member_notifications")
+}
+
+/// A member device that accepted push notifications (Web Push).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  memberId  String   @map("member_id")
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([memberId])
+  @@map("push_subscriptions")
+}
+
+/// Generated settings the server keeps for itself (e.g. the Web Push VAPID keys).
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
 }

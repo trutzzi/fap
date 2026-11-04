@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db.js';
 import { systemClock } from './lib/clock.js';
+import { loadVapidKeys, webPushSender } from './lib/push.js';
 import { logSmsSender, smsLinkSender } from './lib/sms.js';
 import { DEFAULT_CLUB, applyTimezone, loadClub } from './modules/club/club.routes.js';
 import { startExpiryReminders } from './modules/reminders/expiry-reminders.js';
@@ -32,10 +33,16 @@ const sms =
 if (config.NODE_ENV === 'production' && !config.SMSLINK_CONNECTION_ID) {
   logger.warn('SMSLINK_* is not set: member passwords are shown to reception instead of texted');
 }
+// Web Push: the key pair is generated once and kept in the database.
+const push = webPushSender(
+  await loadVapidKeys(db),
+  config.PUBLIC_URL.startsWith('https://') ? config.PUBLIC_URL : 'mailto:admin@localhost',
+);
 const app = createApp({
   db,
   clock: systemClock,
   sms,
+  push,
   publicUrl: config.PUBLIC_URL,
   logger,
   trustProxy: config.TRUST_PROXY,
@@ -43,7 +50,7 @@ const app = createApp({
 
 // Subscription expiry SMS (switched on in Administrare › Club); one API instance runs it.
 const stopReminders = startExpiryReminders(
-  { db, sms, clock: systemClock, publicUrl: config.PUBLIC_URL },
+  { db, sms, push, clock: systemClock, publicUrl: config.PUBLIC_URL },
   logger,
 );
 

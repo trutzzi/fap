@@ -6,6 +6,8 @@ import type { Logger } from 'pino';
  */
 export interface SmsSender {
   send(to: string, text: string): Promise<boolean>;
+  /** SMS left in the account; `null` when no provider is configured. Throws on errors. */
+  credit(): Promise<number | null>;
 }
 
 export interface SmsLinkConfig {
@@ -18,6 +20,7 @@ export interface SmsLinkConfig {
 }
 
 const SMSLINK_URL = 'https://secure.smslink.ro/sms/gateway/communicate/index.php';
+const SMSLINK_JSON_URL = 'https://secure.smslink.ro/sms/gateway/communicate/json.php';
 const TIMEOUT_MS = 10_000;
 
 /**
@@ -49,6 +52,28 @@ export function smsLinkSender(config: SmsLinkConfig, fetchImpl: typeof fetch = f
       }
       return true;
     },
+
+    // The plain-text gateway has no credit check; the JSON one does, and only reads the
+    // credentials from a JSON body.
+    async credit() {
+      const res = await fetchImpl(`${SMSLINK_JSON_URL}?mode=Credit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connection_id: config.connectionId, password: config.password }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      const reply = (await res.json()) as {
+        response_type?: string;
+        response_message?: string;
+        credit?: string | number;
+      };
+      const credit = Number(reply.credit);
+      if (reply.response_type === 'MESSAGE' && Number.isFinite(credit)) return credit;
+      const reason = String(reply.response_message ?? `HTTP ${res.status}`)
+        .split(config.password)
+        .join('***');
+      throw new Error(`SMSLink: ${reason.slice(0, 200)}`);
+    },
   };
 }
 
@@ -58,6 +83,9 @@ export function logSmsSender(logger?: Pick<Logger, 'info'>): SmsSender {
     send(to) {
       (logger ?? console).info(`SMS not sent to ${to}: no SMS provider is configured`);
       return Promise.resolve(false);
+    },
+    credit() {
+      return Promise.resolve(null);
     },
   };
 }

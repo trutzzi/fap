@@ -54,6 +54,7 @@ function createDb(): Db {
     periods: [],
     payments: [],
     announcements: [],
+    notifications: [],
   };
 }
 

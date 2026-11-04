@@ -274,6 +274,7 @@ export const announcementSchema = z.object({
     ],
     'Alege destinatarii.',
   ),
+  sms: z.boolean('Opțiunea SMS este invalidă.').default(false),
 });
 
 export const bulkDeleteSchema = z.object({
@@ -282,4 +283,21 @@ export const bulkDeleteSchema = z.object({
     .min(1, 'Alege membrii de șters.')
     .max(500, 'Poți șterge cel mult 500 de membri odată.')
     .transform((ids) => [...new Set(ids)]),
+});
+
+export const periodPriceSchema = z.object({
+  price: z
+    .number('Prețul este invalid.')
+    .int('Prețul trebuie să fie în lei întregi.')
+    .min(0, 'Prețul nu poate fi negativ.')
+    .max(100_000, 'Prețul este prea mare.')
+    .nullable(),
+});
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.url('Abonarea la notificări este invalidă.').startsWith('https://').max(1000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(100),
+  }),
 });

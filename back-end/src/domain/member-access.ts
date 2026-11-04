@@ -57,6 +57,25 @@ export function expiryReminderText(clubName: string, endDate: string, portalUrl:
   return toGsmText(club.slice(0, Math.max(SMS_MAX_LENGTH - body.length, 0)).trim() + body);
 }
 
+/**
+ * An announcement as one SMS: "Club: Title. Text…", cut with "... Detalii: <link>" when it
+ * doesn't fit, so each member gets exactly one SMS (the full text is in the portal).
+ */
+export function announcementSmsText(
+  clubName: string,
+  title: string,
+  body: string,
+  portalUrl: string,
+): string {
+  const club = toGsmText(clubName).trim() || 'Fight Academy';
+  const head = `${club}: ${toGsmText(title).trim()}. `;
+  const text = toGsmText(body).replace(/\s+/g, ' ').trim();
+  if (head.length + text.length <= SMS_MAX_LENGTH) return head + text;
+  const tail = `... Detalii: ${portalUrl}`;
+  const room = Math.max(SMS_MAX_LENGTH - head.length - tail.length, 0);
+  return (head + text.slice(0, room).trimEnd() + tail).slice(0, SMS_MAX_LENGTH);
+}
+
 // ---- Rotating QR code ----
 
 /** The code changes every step… */

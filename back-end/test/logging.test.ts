@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { SESSION_COOKIE, createSession } from '../src/modules/auth/sessions.js';
-import { PUBLIC_URL, USERS, db, resetData, testSms } from './helpers.js';
+import { PUBLIC_URL, USERS, db, resetData, testPush, testSms } from './helpers.js';
 
 beforeEach(resetData);
 afterAll(async () => {
@@ -24,6 +24,7 @@ describe('request logging', () => {
       db,
       clock: () => new Date(2026, 9, 14, 19, 45),
       sms: testSms,
+      push: testPush,
       publicUrl: PUBLIC_URL,
       logger: pino(sink),
     });

@@ -83,6 +83,18 @@ export interface Db {
   periods: PeriodEntity[];
   payments: PaymentEntity[];
   announcements: AnnouncementEntity[];
+  notifications: NotificationEntity[];
+}
+
+/** A member portal inbox item (check-ins, announcements); the mock never pushes. */
+export interface NotificationEntity {
+  id: string;
+  memberId: string;
+  kind: 'checkin' | 'refused' | 'reminder' | 'announcement';
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
 }
 
 /** A message to members; recipients are fixed when it is sent. */
@@ -94,6 +106,8 @@ export interface AnnouncementEntity {
   createdAt: string;
   createdBy: string | null;
   recipients: { memberId: string; readAt: string | null }[];
+  /** Phones it would have been texted to (the mock has no SMS provider: all fail). */
+  smsRecipients: number;
 }
 
 /** A sold subscription period (history); unique per member and start date. */

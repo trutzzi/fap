@@ -24,6 +24,7 @@ import { funFactOfTheDay } from '../../core/account/fun-facts';
 import { onInterval } from '../../core/util/interval';
 import { IsoDatePipe } from '../../shared/ui/formatting';
 import { QrCode } from '../../shared/ui/qr-code';
+import { MemberNotifications } from './member-notifications';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
@@ -43,6 +44,7 @@ const ACCOUNT_REFRESH_MS = 60_000;
     ReactiveFormsModule,
     IsoDatePipe,
     QrCode,
+    MemberNotifications,
     SessionMeter,
     StatusBadge,
   ],
@@ -159,7 +161,7 @@ export class AccountPage {
   }
 
   /** Account data and announcements, refreshed together (interval, tab shown again). */
-  private refreshAll(): void {
+  protected refreshAll(): void {
     this.refresh();
     this.announcements.reload();
   }

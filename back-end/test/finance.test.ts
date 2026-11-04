@@ -139,3 +139,52 @@ describe('subscription periods and payments', () => {
     await (await signedIn('coach')).get('/api/finance').expect(403);
   });
 });
+
+describe('fixing payment mistakes', () => {
+  it('lists a member’s payments and lets an admin delete a duplicate and fix the price', async () => {
+    // Prices not set yet: the period takes its price from the amount collected.
+    await db.plan.update({ where: { id: 'sessions12' }, data: { price: null } });
+    const { id } = await createMember({
+      planId: 'sessions12',
+      startDate: '2026-10-01',
+      payment: { amount: 350, method: 'cash' },
+    });
+    const periodId = (await staff.get(`/api/members/${id}`)).body.periods[0].id;
+    // Collected again by mistake on the same period.
+    await staff
+      .post('/api/payments')
+      .send({ memberId: id, periodId, amount: 350, method: 'cash' })
+      .expect(201);
+    expect((await staff.get(`/api/members/${id}`)).body.periods[0]).toMatchObject({
+      price: 350,
+      paid: 700,
+    });
+
+    const payments = await staff.get(`/api/members/${id}/payments`).expect(200);
+    expect(payments.body).toHaveLength(2);
+    expect(payments.body[0]).toMatchObject({ amount: 350, periodId, receivedBy: 'Recepție Test' });
+
+    const admin = await signedIn('admin');
+    await staff.delete(`/api/payments/${payments.body[0].id}`).expect(403);
+    await admin.delete(`/api/payments/${payments.body[0].id}`).expect(204);
+    expect((await staff.get(`/api/members/${id}`)).body.periods[0]).toMatchObject({
+      paid: 350,
+      status: 'paid',
+    });
+
+    await staff.put(`/api/periods/${periodId}`).send({ price: 400 }).expect(403);
+    const fixed = await admin.put(`/api/periods/${periodId}`).send({ price: 400 }).expect(200);
+    expect(fixed.body).toMatchObject({
+      price: 400,
+      paid: 350,
+      due: 50,
+      status: 'partial',
+      current: true,
+    });
+    const cleared = await admin.put(`/api/periods/${periodId}`).send({ price: null }).expect(200);
+    expect(cleared.body).toMatchObject({ price: null, status: 'no-price' });
+    const bad = await admin.put(`/api/periods/${periodId}`).send({ price: -5 }).expect(400);
+    expect(bad.body.message).toBe('Prețul nu poate fi negativ.');
+    await admin.put('/api/periods/nope').send({ price: 1 }).expect(404);
+  });
+});

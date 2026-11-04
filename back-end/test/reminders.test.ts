@@ -1,11 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { expiryReminderText } from '../src/domain/member-access.js';
 import { sendExpiryReminders } from '../src/modules/reminders/expiry-reminders.js';
-import { db, resetData, signedIn, smsControl, smsOutbox, testSms } from './helpers.js';
+import { db, resetData, signedIn, smsControl, smsOutbox, testPush, testSms } from './helpers.js';
 
 let now = new Date(2026, 9, 14, 12, 0); // Wednesday 14 Oct, noon
 const run = () =>
-  sendExpiryReminders({ db, sms: testSms, clock: () => now, publicUrl: 'https://club.test' });
+  sendExpiryReminders({
+    db,
+    sms: testSms,
+    push: testPush,
+    clock: () => now,
+    publicUrl: 'https://club.test',
+  });
 
 const setReminders = (expiryReminderSms: boolean) =>
   db.club.upsert({

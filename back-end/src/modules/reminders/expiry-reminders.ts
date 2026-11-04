@@ -6,9 +6,10 @@ import {
   expiryReminderText,
   smsRecipient,
 } from '../../domain/member-access.js';
-import { addDays, toIsoDate } from '../../lib/dates.js';
+import { addDays, formatDate, toIsoDate } from '../../lib/dates.js';
 import { loadClub } from '../club/club.routes.js';
 import { recordError } from '../logs/uptime-checks.js';
+import { notifyMembers, sendSms } from '../notifications/notify.js';
 
 /** Reminders only go out in the daytime (club timezone). */
 const SEND_FROM_HOUR = 10;
@@ -24,9 +25,13 @@ const RUN_EVERY_MS = 15 * 60_000;
 export async function sendExpiryReminders({
   db,
   sms,
+  push,
   clock,
   publicUrl,
-}: Pick<Deps, 'db' | 'sms' | 'clock' | 'publicUrl'>): Promise<{ sent: number; failed: number }> {
+}: Pick<Deps, 'db' | 'sms' | 'push' | 'clock' | 'publicUrl'>): Promise<{
+  sent: number;
+  failed: number;
+}> {
   const result = { sent: 0, failed: 0 };
   const club = await loadClub(db);
   const now = clock();
@@ -52,24 +57,34 @@ export async function sendExpiryReminders({
       WHERE member_id = ${sub.memberId} AND end_date = ${sub.endDate}
         AND expiry_reminder_for IS DISTINCT FROM end_date`;
     if (claimed !== 1) continue;
-    try {
-      const text = expiryReminderText(club.name, fromDbDate(sub.endDate), `${publicUrl}/cont`);
-      if (await sms.send(smsRecipient(sub.member.phone), text)) result.sent++;
-      else
-        throw new Error(
-          'Expiry reminders are on, but SMSLINK_CONNECTION_ID / SMSLINK_PASSWORD are not set',
-        );
-    } catch (err) {
+    const endDate = fromDbDate(sub.endDate);
+    const { ok, error } = await sendSms(
+      { db, sms, clock },
+      {
+        memberId: sub.memberId,
+        to: smsRecipient(sub.member.phone),
+        kind: 'reminder',
+        text: expiryReminderText(club.name, endDate, `${publicUrl}/cont`),
+      },
+    );
+    if (ok) result.sent++;
+    else {
       result.failed++;
-      await recordError(db, 'sms', err instanceof Error ? err.message : String(err));
+      await recordError(db, 'sms', error ?? 'SMS failed');
     }
+    // The app gets it too, even when the SMS failed.
+    await notifyMembers({ db, push, clock }, [sub.memberId], {
+      kind: 'reminder',
+      title: 'Abonamentul expiră curând',
+      body: `Abonamentul tău expiră pe ${formatDate(endDate)}. Reînnoiește-l la recepție.`,
+    });
   }
   return result;
 }
 
 /** Runs the reminders every 15 minutes in the API process; returns a stop function. */
 export function startExpiryReminders(
-  deps: Pick<Deps, 'db' | 'sms' | 'clock' | 'publicUrl'>,
+  deps: Pick<Deps, 'db' | 'sms' | 'push' | 'clock' | 'publicUrl'>,
   logger: Pick<Logger, 'info' | 'error'>,
 ): () => void {
   const run = () =>

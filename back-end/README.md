@@ -71,9 +71,15 @@ All responses are JSON. Errors have the shape `{ "message": "…" }`, with messa
 | PUT | `/api/members/:id/rfid` | Assign, replace (`{ rfid }`) or remove (`{ rfid: null }`) a card |
 | GET | `/api/members/:id/attendance?month=YYYY-MM` | Days with check-ins in a month |
 | DELETE | `/api/members/:id/checkins/:checkInId` · `/api/members/:id/checkins` | Remove one mistaken check-in (staff) / clear the member's check-in history (admin) |
+| GET | `/api/members/:id/payments` | A member's payments, newest first (staff) |
+| PUT | `/api/periods/:id` | Correct a sold period's price, `{ price }` or `null` (admin); wrong payments are removed with DELETE `/api/payments/:id` (admin) |
 | POST | `/api/members/bulk-delete` | Permanently delete several members with their history (`{ memberIds }`, admin) |
-| GET / POST | `/api/announcements` · DELETE `/api/announcements/:id` | Announcements to members: list with read counts, send (`{ title, body, audience }`), withdraw (staff) |
+| GET / POST | `/api/announcements` · DELETE `/api/announcements/:id` | Announcements to members: list with read counts, send (`{ title, body, audience, sms? }`; with `sms` one SMS per phone is sent in the background), withdraw (staff) |
 | GET | `/api/account/announcements` · POST `/api/account/announcements/read` | The member's announcements / mark them read |
+| GET | `/api/account/notifications` · POST `/api/account/notifications/read` | The member's inbox / mark it read |
+| GET / POST / DELETE | `/api/account/push` | Web Push: public key / save this device / remove it (`?endpoint=`) |
+| GET | `/api/notifications` · POST `/api/notifications/seen` | Staff bell: latest check-ins, refused scans and SMS |
+| GET | `/api/sms/credit` · POST `/api/announcements/preview` | SMS left in SMSLink / recipients and SMS count of an announcement |
 | GET / POST | `/api/courses` · PUT / DELETE `/api/courses/:id` | Courses (deleting one also removes its trainings) |
 | GET / POST | `/api/slots` · PUT / DELETE `/api/slots/:id` | Weekly training template (writes are admin) |
 | GET | `/api/schedule?week=YYYY-MM-DD` | Week view with attendance and 4-week averages |

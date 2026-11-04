@@ -55,3 +55,7 @@ textarea.input {
   margin: 0;
   font-size: 13px;
 }
+
+.meta.warn {
+  color: var(--warning);
+}

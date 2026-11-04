@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SubscriptionUsage } from '../src/contract/models.js';
 import {
   accessSmsText,
+  announcementSmsText,
   generateMemberPin,
   parseQrToken,
   phoneKey,
@@ -159,6 +160,22 @@ describe('SMSLink sender', () => {
     });
   });
 
+  it('reads the credit from the JSON gateway', async () => {
+    const json = (reply: unknown) =>
+      smsLinkSender({ connectionId: 'C1', password: 'secret-pw' }, () =>
+        Promise.resolve(Response.json(reply)),
+      );
+    await expect(json({ response_type: 'MESSAGE', credit: '1234' }).credit()).resolves.toBe(1234);
+    const error = await json({
+      response_type: 'ERROR',
+      response_message: "Password 'secret-pw' bad",
+    })
+      .credit()
+      .catch((e: Error) => e);
+    expect(String(error)).toContain('***');
+    expect(String(error)).not.toContain('secret-pw');
+  });
+
   it('throws on an ERROR answer without leaking the gateway password', async () => {
     const error = await sender(200, "ERROR;7;Password 'secret-pw' is not approved!")
       .send('0722513418', 'Salut')
@@ -212,5 +229,27 @@ describe('member stats', () => {
       currentStreakWeeks: 0,
       longestStreakWeeks: 0,
     });
+  });
+});
+
+describe('announcement SMS', () => {
+  it('keeps short announcements whole and cuts long ones with the portal link', () => {
+    expect(
+      announcementSmsText(
+        'Fight Academy Pitești',
+        'Închis',
+        'Mâine sala e închisă.',
+        'https://x.ro/cont',
+      ),
+    ).toBe('Fight Academy Pitesti: Inchis. Maine sala e inchisa.');
+    const long = announcementSmsText(
+      'Fight Academy Pitești',
+      'Program',
+      'ă '.repeat(300),
+      'https://x.ro/cont',
+    );
+    expect(long.length).toBeLessThanOrEqual(160);
+    expect(long.length).toBeGreaterThan(150);
+    expect(long.endsWith('... Detalii: https://x.ro/cont')).toBe(true);
   });
 });

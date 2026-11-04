@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MEMBER_SESSION_COOKIE } from '../src/modules/account/member-sessions.js';
-import { app, db, resetData, setNow, signedIn } from './helpers.js';
+import { app, db, resetData, setNow, signedIn, smsControl, smsOutbox } from './helpers.js';
 
 let staff: Awaited<ReturnType<typeof signedIn>>;
 
@@ -156,4 +156,53 @@ describe('announcements', () => {
     const ionPortal = await portal(late, '0722000002');
     expect((await ionPortal.get('/api/account/announcements').expect(200)).body).toEqual([]);
   });
+
+  it('also texts it once per phone number, in the background', async () => {
+    await createMember('Ana', '0722000001');
+    await createMember('Ioana', '+40 722 000 001'); // sister, same phone
+    await createMember('Ion', '0722000002');
+    const long = 'Sala este închisă pe 1 decembrie. '.repeat(10);
+    const res = await staff
+      .post('/api/announcements')
+      .send({ title: 'Program de sărbători', body: long, audience: { kind: 'all' }, sms: true })
+      .expect(201);
+    expect(res.body.recipients).toBe(3);
+    expect(res.body.sms).toMatchObject({ recipients: 2 });
+
+    const done = await waitForSms(res.body.id);
+    expect(done).toEqual({ recipients: 2, sent: 2, failed: 0 });
+    expect(smsOutbox.map((m) => m.to).sort()).toEqual(['0722000001', '0722000002']);
+    const text = smsOutbox[0].text;
+    expect(text.length).toBeLessThanOrEqual(160);
+    expect(text).toMatch(/^Fight Academy: Program de sarbatori\. Sala este inchisa/);
+    expect(text).toMatch(/\.\.\. Detalii: https:\/\/club\.test\/cont$/);
+
+    // Without the option nothing is texted.
+    const plain = await send({ kind: 'all' }).expect(201);
+    expect(plain.body.sms).toBeNull();
+  });
+
+  it('counts failed SMS and logs them once', async () => {
+    await createMember('Ana', '0722000001');
+    await createMember('Ion', '0722000002');
+    smsControl.fails = true;
+    const res = await staff
+      .post('/api/announcements')
+      .send({ title: 'Test', body: 'Scurt.', audience: { kind: 'all' }, sms: true })
+      .expect(201);
+    expect(await waitForSms(res.body.id)).toEqual({ recipients: 2, sent: 0, failed: 2 });
+    await expect.poll(() => db.errorLog.count()).toBe(1);
+    expect((await db.errorLog.findFirst())?.message).toContain('2 of 2 SMS failed');
+  });
 });
+
+/** Polls the staff list until the background SMS sending finished. */
+async function waitForSms(id: string) {
+  for (let i = 0; i < 100; i++) {
+    const list = await staff.get('/api/announcements').expect(200);
+    const sms = list.body.find((a: { id: string }) => a.id === id)?.sms;
+    if (sms && sms.sent + sms.failed >= sms.recipients) return sms;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error('SMS sending did not finish');
+}

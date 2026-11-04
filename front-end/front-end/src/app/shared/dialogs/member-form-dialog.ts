@@ -16,6 +16,7 @@ import { CreatedMember, MemberSummary, PlanId } from '../../core/api/models';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
 import { toIsoDate } from '../../core/util/dates';
+import { DateInput } from '../ui/date-input';
 import { MemberAccessNotice } from '../ui/member-access-notice';
 import { Modal } from '../ui/modal';
 import { PhotoPicker } from '../ui/photo-picker';
@@ -26,7 +27,7 @@ export const RFID_PATTERN = /^[0-9a-fA-F·:\s-]{4,30}$/;
 /** Create a member (with an optional first subscription) or edit an existing one. */
 @Component({
   selector: 'app-member-form-dialog',
-  imports: [Modal, ReactiveFormsModule, PhotoPicker, MemberAccessNotice],
+  imports: [Modal, ReactiveFormsModule, PhotoPicker, MemberAccessNotice, DateInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './member-form-dialog.html',
 })

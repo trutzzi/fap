@@ -2,6 +2,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createDb } from '../src/db.js';
 import { hashPassword } from '../src/lib/password.js';
+import type { PushSender } from '../src/lib/push.js';
 import type { SmsSender } from '../src/lib/sms.js';
 import { SESSION_COOKIE, createSession } from '../src/modules/auth/sessions.js';
 
@@ -27,10 +28,31 @@ export const testSms: SmsSender = {
     smsOutbox.push({ to, text });
     return Promise.resolve(true);
   },
+  credit() {
+    return Promise.resolve(smsControl.unconfigured ? null : 500 - smsOutbox.length);
+  },
 };
 export const PUBLIC_URL = 'https://club.test';
 
-export const app = createApp({ db, clock: () => now, sms: testSms, publicUrl: PUBLIC_URL });
+/** Push messages "delivered"; endpoints in `pushGone` answer 410 (subscription dropped). */
+export const pushOutbox: { endpoint: string; payload: unknown }[] = [];
+export const pushGone = new Set<string>();
+export const testPush: PushSender = {
+  publicKey: 'test-public-key',
+  send(target, payload) {
+    if (pushGone.has(target.endpoint)) return Promise.resolve('gone');
+    pushOutbox.push({ endpoint: target.endpoint, payload: JSON.parse(payload) });
+    return Promise.resolve('ok');
+  },
+};
+
+export const app = createApp({
+  db,
+  clock: () => now,
+  sms: testSms,
+  push: testPush,
+  publicUrl: PUBLIC_URL,
+});
 
 export const PASSWORD = 'parola-de-test-123';
 export const USERS = {
@@ -47,9 +69,11 @@ export async function resetData(): Promise<void> {
   smsOutbox.length = 0;
   smsControl.fails = false;
   smsControl.unconfigured = false;
+  pushOutbox.length = 0;
+  pushGone.clear();
   passwordHash ??= await hashPassword(PASSWORD); // scrypt is slow on purpose: hash once
   await db.$executeRawUnsafe(
-    'TRUNCATE uptime_checks, error_logs, payments, subscription_periods, sessions, users, club, check_ins, subscriptions, member_courses, members, training_slots, courses, plans CASCADE',
+    'TRUNCATE sms_messages, uptime_checks, error_logs, payments, subscription_periods, sessions, users, club, check_ins, subscriptions, member_courses, members, training_slots, courses, plans CASCADE',
   );
   await db.user.createMany({
     data: Object.values(USERS).map((u) => ({ ...u, passwordHash: passwordHash! })),

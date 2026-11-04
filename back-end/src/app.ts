@@ -21,6 +21,8 @@ import { financeRouter } from './modules/finance/finance.routes.js';
 import { insightsRouter } from './modules/insights/insights.routes.js';
 import { logsRouter } from './modules/logs/logs.routes.js';
 import { recordError } from './modules/logs/uptime-checks.js';
+import { smsRouter } from './modules/notifications/sms.routes.js';
+import { staffFeedRouter } from './modules/notifications/staff-feed.routes.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { membersRouter } from './modules/members/members.routes.js';
 import { memberPhotosRouter } from './modules/members/photos.routes.js';
@@ -69,6 +71,8 @@ export function createApp({
   api.use(financeRouter(deps));
   api.use(reportsRouter(deps));
   api.use(announcementsRouter(deps));
+  api.use(staffFeedRouter(deps));
+  api.use(smsRouter(deps));
   api.use(logsRouter(deps));
   api.use(checkInsRouter(deps));
   api.use((_req, _res, next) => next(new HttpError(404, 'Resursa nu există.')));

@@ -10,6 +10,7 @@ import {
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { loadClub } from '../club/club.routes.js';
 import { recordError } from '../logs/uptime-checks.js';
+import { sendSms } from '../notifications/notify.js';
 
 /**
  * Members with a portal PIN and the same phone number, in any format. Phones are not
@@ -49,7 +50,7 @@ export async function pinTakenOnPhone(
  * out, the PIN is returned so reception can hand it over; failures go to the logs page.
  */
 export async function issueMemberAccess(
-  { db, sms, publicUrl }: Pick<Deps, 'db' | 'sms' | 'publicUrl'>,
+  { db, sms, clock, publicUrl }: Pick<Deps, 'db' | 'sms' | 'clock' | 'publicUrl'>,
   memberId: string,
 ): Promise<MemberAccessResult> {
   const { phone } = await db.member.findUniqueOrThrow({
@@ -66,21 +67,17 @@ export async function issueMemberAccess(
   const club = await loadClub(db);
   let outcome: PinSmsOutcome = 'disabled';
   if (club.smsEnabled) {
-    try {
-      const text = accessSmsText(club.name, pin, `${publicUrl}/cont`);
-      if (await sms.send(smsRecipient(phone), text)) outcome = 'sent';
-      else {
-        outcome = 'failed';
-        await recordError(
-          db,
-          'sms',
-          'SMS is on in the club settings, but SMSLINK_CONNECTION_ID / SMSLINK_PASSWORD are not set',
-        );
-      }
-    } catch (err) {
-      outcome = 'failed';
-      await recordError(db, 'sms', err instanceof Error ? err.message : String(err));
-    }
+    const { ok, error } = await sendSms(
+      { db, sms, clock },
+      {
+        memberId,
+        to: smsRecipient(phone),
+        kind: 'pin',
+        text: accessSmsText(club.name, pin, `${publicUrl}/cont`),
+      },
+    );
+    outcome = ok ? 'sent' : 'failed';
+    if (!ok) await recordError(db, 'sms', error ?? 'SMS failed');
   }
   return { sms: outcome, phone, temporaryPin: outcome === 'sent' ? null : pin };
 }

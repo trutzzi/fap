@@ -4,6 +4,9 @@ import { Observable, catchError, finalize, firstValueFrom, map, of, tap } from '
 import {
   MemberAccount,
   MemberAnnouncement,
+  MemberNotification,
+  PushConfig,
+  PushSubscriptionInput,
   MemberLoginInput,
   MemberQrCode,
   PinChangeInput,
@@ -65,6 +68,26 @@ export class MemberAccountService {
   /** Marks every announcement as read (the member has seen the list). */
   markAnnouncementsRead(): Observable<void> {
     return this.http.post<void>('/api/account/announcements/read', {});
+  }
+
+  notifications(): Observable<MemberNotification[]> {
+    return this.http.get<MemberNotification[]>('/api/account/notifications');
+  }
+
+  markNotificationsRead(): Observable<void> {
+    return this.http.post<void>('/api/account/notifications/read', {});
+  }
+
+  pushConfig(): Observable<PushConfig> {
+    return this.http.get<PushConfig>('/api/account/push');
+  }
+
+  subscribePush(input: PushSubscriptionInput): Observable<void> {
+    return this.http.post<void>('/api/account/push', input);
+  }
+
+  unsubscribePush(endpoint: string): Observable<void> {
+    return this.http.delete<void>('/api/account/push', { params: { endpoint } });
   }
 
   qr(): Observable<MemberQrCode> {

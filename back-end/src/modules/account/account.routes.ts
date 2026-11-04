@@ -1,5 +1,12 @@
 import { Router, type RequestHandler } from 'express';
-import type { MemberAccount, MemberAnnouncement, MemberQrCode } from '../../contract/models.js';
+import type {
+  MemberAccount,
+  MemberAnnouncement,
+  MemberNotification,
+  MemberNotificationKind,
+  MemberQrCode,
+  PushConfig,
+} from '../../contract/models.js';
 import type { Deps } from '../../deps.js';
 import { newQrSecret, phoneKey, QR_STEP_MS, qrToken } from '../../domain/member-access.js';
 import { memberStats, type StatsCheckIn } from '../../domain/member-stats.js';
@@ -8,7 +15,12 @@ import { today } from '../../lib/clock.js';
 import { HttpError } from '../../lib/http-error.js';
 import { hashPassword, verifyAgainstDummy, verifyPassword } from '../../lib/password.js';
 import { RateLimiter } from '../../lib/rate-limit.js';
-import { memberLoginSchema, parse, pinChangeSchema } from '../../lib/validation.js';
+import {
+  memberLoginSchema,
+  parse,
+  pinChangeSchema,
+  pushSubscriptionSchema,
+} from '../../lib/validation.js';
 import { clearSessionCookie, readSessionToken, setSessionCookie } from '../auth/sessions.js';
 import { checkInHistory, loadSummary } from '../members/member-queries.js';
 import { membersWithPhone, pinTakenOnPhone } from './member-access.js';
@@ -34,7 +46,7 @@ const NOT_SIGNED_IN = 'Autentifică-te pentru a continua.';
  * SMS, then show their rotating QR code at the kiosk. Separate from staff auth: its own
  * cookie and sessions table, and a member session never grants access to the staff API.
  */
-export function accountRouter({ db, clock }: Deps): Router {
+export function accountRouter({ db, clock, push }: Deps): Router {
   const router = Router();
   const byPhone = new RateLimiter(MAX_FAILURES_PER_PHONE, LOGIN_WINDOW_MS);
   const byIp = new RateLimiter(MAX_FAILURES_PER_IP, LOGIN_WINDOW_MS);
@@ -111,6 +123,9 @@ export function accountRouter({ db, clock }: Deps): Router {
       unreadAnnouncements: await db.announcementRecipient.count({
         where: { memberId, readAt: null },
       }),
+      unreadNotifications: await db.memberNotification.count({
+        where: { memberId, readAt: null },
+      }),
       joinedAt: summary.joinedAt,
       stats: memberStats(await statsCheckIns(memberId), today(clock)),
     };
@@ -176,6 +191,56 @@ export function accountRouter({ db, clock }: Deps): Router {
       where: { memberId: req.member!.id, readAt: null },
       data: { readAt: clock() },
     });
+    res.status(204).end();
+  });
+
+  /** The member's inbox, newest first (the last 50). */
+  router.get('/notifications', async (req, res) => {
+    const rows = await db.memberNotification.findMany({
+      where: { memberId: req.member!.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    const body: MemberNotification[] = rows.map((n) => ({
+      id: n.id,
+      kind: n.kind as MemberNotificationKind,
+      title: n.title,
+      body: n.body,
+      createdAt: n.createdAt.toISOString(),
+      read: n.readAt !== null,
+    }));
+    res.json(body);
+  });
+
+  router.post('/notifications/read', async (req, res) => {
+    await db.memberNotification.updateMany({
+      where: { memberId: req.member!.id, readAt: null },
+      data: { readAt: clock() },
+    });
+    res.status(204).end();
+  });
+
+  /** Web Push: the key to subscribe with (`null` when the server has push off). */
+  router.get('/push', (_req, res) => {
+    const body: PushConfig = { publicKey: push.publicKey };
+    res.json(body);
+  });
+
+  /** Saves this device's push subscription (re-subscribing moves it to this member). */
+  router.post('/push', async (req, res) => {
+    const { endpoint, keys } = parse(pushSubscriptionSchema, req.body);
+    const data = { memberId: req.member!.id, p256dh: keys.p256dh, auth: keys.auth };
+    await db.pushSubscription.upsert({
+      where: { endpoint },
+      create: { endpoint, ...data },
+      update: data,
+    });
+    res.status(204).end();
+  });
+
+  router.delete('/push', async (req, res) => {
+    const endpoint = String((req.query['endpoint'] as string | undefined) ?? '');
+    await db.pushSubscription.deleteMany({ where: { endpoint, memberId: req.member!.id } });
     res.status(204).end();
   });
 
