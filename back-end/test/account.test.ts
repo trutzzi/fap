@@ -157,6 +157,9 @@ describe('member portal', () => {
       history: [],
     });
     expect(res.body).not.toHaveProperty('rfid');
+    expect(res.body.stats).toMatchObject({ total: 0, thisMonth: 0, currentStreakWeeks: 0 });
+    expect(res.body.stats.weeks).toHaveLength(8);
+    expect(res.body.joinedAt).toBe('2026-10-14');
     // A member session is not a staff session.
     await portal.get('/api/members').expect(401);
     await portal.post('/api/checkins').send({ memberId: res.body.id }).expect(401);

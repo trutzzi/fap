@@ -2,6 +2,7 @@ import { DatePipe, NgOptimizedImage } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   afterNextRender,
   effect,
@@ -14,11 +15,12 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { MemberAccountService } from '../../core/account/member-account.service';
 import { PIN_PATTERN, digitsOnly } from '../../core/account/pin';
-import { CheckInRecord } from '../../core/api/models';
+import { CheckInRecord, MemberAccount } from '../../core/api/models';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
-import { WEEKDAYS_SHORT, formatDate, isoWeekday, toIsoDate } from '../../core/util/dates';
+import { WEEKDAYS, WEEKDAYS_SHORT, formatDate, isoWeekday, toIsoDate } from '../../core/util/dates';
 import { InstallPrompt } from '../../core/util/install-prompt';
+import { funFactOfTheDay } from '../../core/account/fun-facts';
 import { onInterval } from '../../core/util/interval';
 import { IsoDatePipe } from '../../shared/ui/formatting';
 import { QrCode } from '../../shared/ui/qr-code';
@@ -59,6 +61,18 @@ export class AccountPage {
     () => this.accounts.qr(),
   );
   protected readonly install = inject(InstallPrompt);
+  protected readonly weekdays = WEEKDAYS;
+  /** Today's motivating fact from the member's own numbers. */
+  protected readonly funFact = computed(() => {
+    const a = this.account();
+    return a ? funFactOfTheDay(a.stats, a.joinedAt, toIsoDate(new Date())) : '';
+  });
+  /** Bar heights for the last 8 weeks, relative to the busiest week. */
+  protected readonly weekBars = computed(() => {
+    const weeks = this.account()?.stats.weeks ?? [];
+    const max = Math.max(1, ...weeks.map((w) => w.count));
+    return weeks.map((w) => ({ ...w, height: Math.round((w.count / max) * 100) }));
+  });
   /** Newest first; unread ones keep their "Nou" badge until the next refresh. */
   protected readonly announcements = createQuery(
     () => null,
@@ -98,6 +112,10 @@ export class AccountPage {
     effect(() => {
       if (!this.account()) void this.router.navigate(['/cont/login']);
     });
+  }
+
+  protected weekCounts(account: MemberAccount): string {
+    return account.stats.weeks.map((w) => w.count).join(', ');
   }
 
   protected historyDate(record: CheckInRecord): string {

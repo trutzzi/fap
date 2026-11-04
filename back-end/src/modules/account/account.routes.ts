@@ -2,6 +2,8 @@ import { Router, type RequestHandler } from 'express';
 import type { MemberAccount, MemberAnnouncement, MemberQrCode } from '../../contract/models.js';
 import type { Deps } from '../../deps.js';
 import { newQrSecret, phoneKey, QR_STEP_MS, qrToken } from '../../domain/member-access.js';
+import { memberStats, type StatsCheckIn } from '../../domain/member-stats.js';
+import { fromDbDate } from '../../db.js';
 import { today } from '../../lib/clock.js';
 import { HttpError } from '../../lib/http-error.js';
 import { hashPassword, verifyAgainstDummy, verifyPassword } from '../../lib/password.js';
@@ -109,7 +111,21 @@ export function accountRouter({ db, clock }: Deps): Router {
       unreadAnnouncements: await db.announcementRecipient.count({
         where: { memberId, readAt: null },
       }),
+      joinedAt: summary.joinedAt,
+      stats: memberStats(await statsCheckIns(memberId), today(clock)),
     };
+  }
+
+  async function statsCheckIns(memberId: string): Promise<StatsCheckIn[]> {
+    const rows = await db.checkIn.findMany({
+      where: { memberId },
+      select: { date: true, trainingLabel: true, slot: { select: { durationMin: true } } },
+    });
+    return rows.map((r) => ({
+      date: fromDbDate(r.date),
+      trainingLabel: r.trainingLabel,
+      durationMin: r.slot?.durationMin ?? null,
+    }));
   }
 
   router.get('/', async (req, res) => {

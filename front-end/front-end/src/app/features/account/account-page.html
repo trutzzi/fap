@@ -35,6 +35,56 @@
       </div>
     </section>
 
+    <section class="card" aria-labelledby="stats-title">
+      <h2 id="stats-title" class="section-title">Statisticile tale</h2>
+      <div class="tiles">
+        <div class="tile">
+          <span class="display big">{{ a.stats.thisMonth }}</span>
+          <span class="muted small">luna aceasta</span>
+          @if (a.stats.lastMonth) {
+            <span class="small">luna trecută: {{ a.stats.lastMonth }}</span>
+          }
+        </div>
+        <div class="tile">
+          <span class="display big">{{ a.stats.total }}</span>
+          <span class="muted small">prezențe în total</span>
+        </div>
+        <div class="tile">
+          <span class="display big">{{ a.stats.trainingHours }}</span>
+          <span class="muted small">ore de antrenament</span>
+        </div>
+        <div class="tile">
+          <span class="display big">{{ a.stats.currentStreakWeeks }}</span>
+          <span class="muted small">săptămâni la rând</span>
+          <span class="small">record: {{ a.stats.longestStreakWeeks }}</span>
+        </div>
+      </div>
+      <div
+        class="weeks"
+        role="img"
+        [attr.aria-label]="'Prezențe pe ultimele 8 săptămâni: ' + weekCounts(a)"
+      >
+        @for (w of weekBars(); track w.weekStart) {
+          <div class="week">
+            <span class="count">{{ w.count || '' }}</span>
+            <span class="bar" [style.height.%]="w.height" [class.empty]="!w.count"></span>
+          </div>
+        }
+      </div>
+      <p class="muted small">Ultimele 8 săptămâni</p>
+      @if (a.stats.favoriteTraining || a.stats.favoriteWeekday) {
+        <p class="small">
+          @if (a.stats.favoriteTraining; as f) {
+            Antrenament preferat: <strong>{{ f.label }}</strong>
+          }
+          @if (a.stats.favoriteWeekday; as d) {
+            · Zi preferată: <strong>{{ weekdays[d - 1] }}</strong>
+          }
+        </p>
+      }
+      <p class="fact"><strong>Știai că…?</strong> {{ funFact() }}</p>
+    </section>
+
     @if (!install.installed() && (install.canInstall() || install.isIos())) {
       <section class="card install" aria-labelledby="install-title">
         <h2 id="install-title" class="section-title">Aplicația pe telefon</h2>

@@ -10,6 +10,7 @@ import {
   smsRecipient,
   verifyQrToken,
 } from '../src/domain/member-access.js';
+import { memberStats } from '../src/domain/member-stats.js';
 import { memberStatus, normalizeRfid, periodEnd, usage } from '../src/domain/membership.js';
 import { smsLinkSender } from '../src/lib/sms.js';
 import { currentSlot, scheduleSummary, trainingState } from '../src/domain/schedule.js';
@@ -164,5 +165,52 @@ describe('SMSLink sender', () => {
       .catch((e: Error) => e);
     expect(String(error)).toContain('ERROR;7');
     expect(String(error)).not.toContain('secret-pw');
+  });
+});
+
+describe('member stats', () => {
+  const c = (date: string, trainingLabel: string | null, durationMin: number | null = 60) => ({
+    date,
+    trainingLabel,
+    durationMin,
+  });
+
+  it('summarizes attendance, favourites and week streaks', () => {
+    const stats = memberStats(
+      [
+        c('2026-10-13', 'Kickboxing'), // Tue, this week (starts Mon 12 Oct)
+        c('2026-10-06', 'Kickboxing', 90), // Tue, last week
+        c('2026-09-30', 'BJJ', null), // Wed, week of 28 Sep; unknown length → 60 min
+        c('2026-09-15', 'Kickboxing'), // Tue, week of 14 Sep (gap before it)
+      ],
+      '2026-10-14',
+    );
+    expect(stats).toMatchObject({
+      total: 4,
+      thisMonth: 2,
+      lastMonth: 2,
+      trainingHours: 5, // 270 minutes
+      favoriteTraining: { label: 'Kickboxing', count: 3 },
+      favoriteWeekday: 2,
+      currentStreakWeeks: 3,
+      longestStreakWeeks: 3,
+    });
+    expect(stats.weeks).toHaveLength(8);
+    expect(stats.weeks.at(-1)).toEqual({ weekStart: '2026-10-12', count: 1 });
+    expect(stats.weeks[0].weekStart).toBe('2026-08-24');
+  });
+
+  it('keeps a streak alive until a whole week is missed, and handles no check-ins', () => {
+    // Nothing yet this week: the streak still counts up to last week.
+    expect(memberStats([c('2026-10-06', null)], '2026-10-14').currentStreakWeeks).toBe(1);
+    expect(memberStats([c('2026-09-29', null)], '2026-10-14').currentStreakWeeks).toBe(0);
+    expect(memberStats([], '2026-10-14')).toMatchObject({
+      total: 0,
+      trainingHours: 0,
+      favoriteTraining: null,
+      favoriteWeekday: null,
+      currentStreakWeeks: 0,
+      longestStreakWeeks: 0,
+    });
   });
 });

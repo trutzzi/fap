@@ -35,6 +35,7 @@ import {
   toMonth,
 } from '../../app/core/util/dates';
 import { CheckInEntity, Db, MemberEntity, SlotEntity, normalizeRfid } from './db';
+import { memberStats } from './member-stats';
 
 /** A subscription is "expiring" this many days before its last day. */
 const EXPIRING_WITHIN_DAYS = 7;
@@ -143,6 +144,17 @@ export class Views {
       unreadAnnouncements: this.db.announcements.filter((a) =>
         a.recipients.some((r) => r.memberId === member.id && r.readAt === null),
       ).length,
+      joinedAt: member.joinedAt,
+      stats: memberStats(
+        this.db.checkins
+          .filter((c) => c.memberId === member.id)
+          .map((c) => ({
+            date: c.date,
+            trainingLabel: c.trainingLabel,
+            durationMin: this.db.slots.find((s) => s.id === c.slotId)?.durationMin ?? null,
+          })),
+        this.today,
+      ),
     };
   }
 

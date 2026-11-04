@@ -121,3 +121,56 @@ details[open] summary {
 .install {
   align-items: flex-start;
 }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-hover);
+}
+.big {
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--text-strong);
+}
+.weeks {
+  height: 90px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+.week {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+.count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.bar {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+}
+.bar.empty {
+  background: var(--border);
+}
+.fact {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-hover);
+}

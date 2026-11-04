@@ -42,7 +42,10 @@ const app = createApp({
 });
 
 // Subscription expiry SMS (switched on in Administrare › Club); one API instance runs it.
-const stopReminders = startExpiryReminders({ db, sms, clock: systemClock }, logger);
+const stopReminders = startExpiryReminders(
+  { db, sms, clock: systemClock, publicUrl: config.PUBLIC_URL },
+  logger,
+);
 
 const server = app.listen(config.PORT, (error) => {
   if (error) throw error;

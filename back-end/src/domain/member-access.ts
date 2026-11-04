@@ -51,8 +51,8 @@ export function accessSmsText(clubName: string, pin: string, portalUrl: string):
 export const EXPIRY_REMINDER_DAYS = 3;
 
 /** "Fight Academy Pitesti: abonamentul tau expira pe 07-11-2026. …" — one GSM SMS. */
-export function expiryReminderText(clubName: string, endDate: string): string {
-  const body = `: abonamentul tau expira pe ${formatDate(endDate)}. Te asteptam la receptie pentru reinnoire. Multumim!`;
+export function expiryReminderText(clubName: string, endDate: string, portalUrl: string): string {
+  const body = `: abonamentul tau expira pe ${formatDate(endDate)}. Reinnoieste-l la receptie. Contul tau: ${portalUrl}`;
   const club = toGsmText(clubName).trim() || 'Fight Academy';
   return toGsmText(club.slice(0, Math.max(SMS_MAX_LENGTH - body.length, 0)).trim() + body);
 }

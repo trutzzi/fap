@@ -25,7 +25,8 @@ export async function sendExpiryReminders({
   db,
   sms,
   clock,
-}: Pick<Deps, 'db' | 'sms' | 'clock'>): Promise<{ sent: number; failed: number }> {
+  publicUrl,
+}: Pick<Deps, 'db' | 'sms' | 'clock' | 'publicUrl'>): Promise<{ sent: number; failed: number }> {
   const result = { sent: 0, failed: 0 };
   const club = await loadClub(db);
   const now = clock();
@@ -52,7 +53,7 @@ export async function sendExpiryReminders({
         AND expiry_reminder_for IS DISTINCT FROM end_date`;
     if (claimed !== 1) continue;
     try {
-      const text = expiryReminderText(club.name, fromDbDate(sub.endDate));
+      const text = expiryReminderText(club.name, fromDbDate(sub.endDate), `${publicUrl}/cont`);
       if (await sms.send(smsRecipient(sub.member.phone), text)) result.sent++;
       else
         throw new Error(
@@ -68,7 +69,7 @@ export async function sendExpiryReminders({
 
 /** Runs the reminders every 15 minutes in the API process; returns a stop function. */
 export function startExpiryReminders(
-  deps: Pick<Deps, 'db' | 'sms' | 'clock'>,
+  deps: Pick<Deps, 'db' | 'sms' | 'clock' | 'publicUrl'>,
   logger: Pick<Logger, 'info' | 'error'>,
 ): () => void {
   const run = () =>

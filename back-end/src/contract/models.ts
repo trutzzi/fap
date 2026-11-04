@@ -534,6 +534,27 @@ export interface MemberAccount {
   history: CheckInRecord[];
   /** Announcements the member hasn't opened yet. */
   unreadAnnouncements: number;
+  joinedAt: string;
+  stats: MemberStats;
+}
+
+/** Attendance figures for the member portal ("Statisticile tale"). */
+export interface MemberStats {
+  /** All check-ins ever. */
+  total: number;
+  thisMonth: number;
+  lastMonth: number;
+  /** Sum of the trainings' durations (60 min when unknown), rounded. */
+  trainingHours: number;
+  /** Most attended training by name; `null` without check-ins at a training. */
+  favoriteTraining: { label: string; count: number } | null;
+  /** 1 = Monday … 7 = Sunday; `null` without check-ins. */
+  favoriteWeekday: number | null;
+  /** Consecutive weeks with at least one check-in, up to this week (or last week). */
+  currentStreakWeeks: number;
+  longestStreakWeeks: number;
+  /** The last 8 weeks, oldest first. */
+  weeks: { weekStart: string; count: number }[];
 }
 
 /** The member's current check-in QR code; fetch a new one before `expiresAt`. */

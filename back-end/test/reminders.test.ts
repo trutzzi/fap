@@ -4,7 +4,8 @@ import { sendExpiryReminders } from '../src/modules/reminders/expiry-reminders.j
 import { db, resetData, signedIn, smsControl, smsOutbox, testSms } from './helpers.js';
 
 let now = new Date(2026, 9, 14, 12, 0); // Wednesday 14 Oct, noon
-const run = () => sendExpiryReminders({ db, sms: testSms, clock: () => now });
+const run = () =>
+  sendExpiryReminders({ db, sms: testSms, clock: () => now, publicUrl: 'https://club.test' });
 
 const setReminders = (expiryReminderSms: boolean) =>
   db.club.upsert({
@@ -49,10 +50,18 @@ afterAll(async () => {
 
 describe('expiry reminder SMS', () => {
   it('fits one GSM SMS with the end date as dd-mm-yyyy', () => {
-    expect(expiryReminderText('Fight Academy Pitești', '2026-10-17')).toBe(
-      'Fight Academy Pitesti: abonamentul tau expira pe 17-10-2026. Te asteptam la receptie pentru reinnoire. Multumim!',
+    expect(
+      expiryReminderText(
+        'Fight Academy Pitești',
+        '2026-10-17',
+        'https://fap.valentintruta.ro/cont',
+      ),
+    ).toBe(
+      'Fight Academy Pitesti: abonamentul tau expira pe 17-10-2026. Reinnoieste-l la receptie. Contul tau: https://fap.valentintruta.ro/cont',
     );
-    expect(expiryReminderText('Ș'.repeat(300), '2026-10-17').length).toBeLessThanOrEqual(160);
+    expect(
+      expiryReminderText('Ș'.repeat(300), '2026-10-17', 'https://x.ro/cont').length,
+    ).toBeLessThanOrEqual(160);
   });
 
   it('texts members within 3 days of the end, once per period, in the daytime only', async () => {
