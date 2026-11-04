@@ -519,3 +519,20 @@ fieldset.field {
     margin-right: 0;
   }
 }
+
+/* The sidebar's "Kiosk check-in": reception's main action, so a filled red button.
+   Global (not in shell.css) because of that component's style budget. */
+.sidebar nav a.kiosk-link {
+  min-height: 52px;
+  margin: 6px 0;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(225, 6, 0, 0.35);
+}
+.sidebar nav a.kiosk-link:hover,
+.sidebar nav a.kiosk-link.active {
+  background: var(--accent);
+  color: #fff;
+}

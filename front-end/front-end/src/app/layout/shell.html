@@ -28,6 +28,7 @@
                 routerLinkActive="active"
                 ariaCurrentWhenActive="page"
                 [attr.title]="item.label"
+                [class.kiosk-link]="item.path === '/kiosk'"
               >
                 <app-icon [name]="item.icon" />
                 <span class="nav-label">{{ item.label }}</span>
@@ -46,14 +47,6 @@
           @if (isStaff()) {
             <app-staff-bell />
           }
-          <button
-            type="button"
-            class="btn btn-sm btn-ghost"
-            aria-label="Schimbă parola"
-            (click)="changingPassword.set(true)"
-          >
-            Parolă
-          </button>
           <button type="button" class="btn btn-sm btn-ghost" (click)="logout()">Ieșire</button>
         </div>
       }
@@ -67,6 +60,3 @@
     <router-outlet />
   </main>
 </div>
-@if (changingPassword()) {
-  <app-password-dialog (closed)="changingPassword.set(false)" />
-}
