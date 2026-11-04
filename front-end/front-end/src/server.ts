@@ -37,6 +37,11 @@ app.use(
     maxAge: '1y',
     index: false,
     redirect: false,
+    // Only content-hashed build files (main-AB12CD34.js) may be cached for a year; the
+    // manifest, icons and the like must be revalidated so a new deploy shows up.
+    setHeaders: (res, path) => {
+      if (!/-[A-Z0-9]{8}\.(js|css)$/.test(path)) res.setHeader('Cache-Control', 'no-cache');
+    },
   }),
 );
 
@@ -44,6 +49,8 @@ app.use(
  * Handle all other requests by rendering the Angular application.
  */
 app.use((req, res, next) => {
+  // Pages always come fresh, so they reference the current build's files.
+  res.setHeader('Cache-Control', 'no-cache');
   angularApp
     .handle(req)
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))

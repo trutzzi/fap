@@ -75,13 +75,15 @@ nav a.active {
 .account {
   margin-top: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 12px 8px 0;
   border-top: 1px solid var(--border);
 }
+/* Name and role on the first row; the buttons wrap below and share the second. */
 .who {
-  flex: 1;
+  flex: 1 1 130px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -129,6 +131,47 @@ nav a.active {
   flex-direction: column;
   gap: 28px;
   min-height: 0;
+}
+
+/* Landscape tablets and small laptops: a compact icon rail leaves the pages ~170px more. */
+@media (min-width: 901px) and (max-width: 1439px) {
+  .shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  .sidebar {
+    padding: 20px 10px;
+  }
+  .brand {
+    justify-content: center;
+    padding: 0;
+  }
+  .brand-name,
+  .who {
+    display: none;
+  }
+  .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  nav a {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  .account {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0 0;
+  }
+  .account .btn {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+  .content {
+    padding: 28px 28px 40px;
+  }
 }
 
 /* Phones and portrait tablets: a sticky top bar; the menu opens below it. */

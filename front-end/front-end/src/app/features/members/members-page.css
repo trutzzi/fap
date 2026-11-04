@@ -223,3 +223,29 @@ tr.picked {
 .selection strong {
   margin-right: auto;
 }
+
+/* Landscape tablets: drop the card code (it is on the profile) and tighten the cells. */
+@media (min-width: 901px) and (max-width: 1439px) {
+  table {
+    min-width: 0;
+  }
+  .col-rfid {
+    display: none;
+  }
+  th,
+  td {
+    padding: 12px 10px;
+  }
+  .meter {
+    width: 84px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1099px) {
+  .col-courses {
+    display: none;
+  }
+  th,
+  td {
+    padding: 10px 7px;
+  }
+}

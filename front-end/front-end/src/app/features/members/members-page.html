@@ -83,11 +83,11 @@
             </th>
           }
           <th scope="col">Membru</th>
-          <th scope="col">Cursuri</th>
+          <th scope="col" class="col-courses">Cursuri</th>
           <th scope="col">Abonament</th>
           <th scope="col">Utilizare</th>
           <th scope="col">Valabil până la</th>
-          <th scope="col">Card RFID</th>
+          <th scope="col" class="col-rfid">Card RFID</th>
           <th scope="col">Status</th>
         </tr>
       </thead>
@@ -113,7 +113,7 @@
                 </span>
               </a>
             </td>
-            <td data-label="Cursuri">
+            <td data-label="Cursuri" class="col-courses">
               <div class="tags">
                 @for (c of m.courses; track c.id) {
                   <span class="tag" [style.color]="c.color">{{ c.name }}</span>
@@ -156,7 +156,7 @@
             >
               {{ m.subscription?.endDate | isoDate }}
             </td>
-            <td data-label="Card RFID" class="mono muted">{{ m.rfid | rfid }}</td>
+            <td data-label="Card RFID" class="mono muted col-rfid">{{ m.rfid | rfid }}</td>
             <td data-label="Status"><app-status-badge [status]="m.status" /></td>
           </tr>
         } @empty {

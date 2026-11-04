@@ -238,3 +238,33 @@ strong {
 .camera {
   width: min(340px, 100%);
 }
+
+@media (max-width: 1180px) {
+  .brand-name {
+    display: none;
+  }
+  .now {
+    gap: 14px;
+  }
+  .clock {
+    font-size: 36px;
+  }
+}
+@media (min-width: 701px) and (max-height: 860px) {
+  .kiosk {
+    padding: 18px 28px;
+    gap: 16px;
+  }
+  .panel,
+  .scan {
+    padding: 22px;
+    gap: 14px;
+  }
+  .scan-title,
+  .result-title {
+    font-size: 32px;
+  }
+  .camera {
+    width: min(300px, 100%, 42vh);
+  }
+}

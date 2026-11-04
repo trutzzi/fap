@@ -51,6 +51,8 @@ npx ng generate component <name>            # scaffold; selector prefix is `app`
 - TypeScript strict mode plus Angular `strictTemplates`, `strictInjectionParameters`, `strictInputAccessModifiers`; `noPropertyAccessFromIndexSignature` means index-signature access must use bracket notation (e.g. `process.env['PORT']`).
 - Prettier uses the Angular parser for `.html`.
 - Components are standalone and use `ChangeDetectionStrategy.OnPush` (it is not the default in v21), `inject()`, signal `input()`/`output()` and typed reactive forms (Signal Forms are experimental).
+- **Screen sizes:** the entrance and reception tablets run landscape (1024–1366 px wide). From 901 to 1439 px the staff sidebar is an icon rail, the members table drops the card column (and below 1100 px the courses column), and the kiosk fits on one screen without scrolling. Below 901 px the sidebar becomes a top bar with a menu button.
+- **Deploys:** pages are served `Cache-Control: no-cache` (only content-hashed `*-HASH.js/.css` are cached for a year), and `core/util/stale-build.ts` reloads the target page when a lazy chunk from the previous build fails to load (a tab left open across a deploy).
 - Production budgets (`angular.json`): initial bundle warns at 500kB / errors at 1MB; **per-component styles warn at 4kB / error at 8kB**. Design tokens (CSS custom properties) and shared classes (`.card`, `.btn*`, `.chip`, `.badge--*`, `.input`, `.field`, `.form-footer`, …) live in `src/styles.css`; use them before adding component CSS.
 - Static assets go in `public/` (served from the site root).
 

@@ -23,9 +23,14 @@
         <ul>
           @for (item of nav(); track item.path) {
             <li>
-              <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                ariaCurrentWhenActive="page"
+                [attr.title]="item.label"
+              >
                 <app-icon [name]="item.icon" />
-                {{ item.label }}
+                <span class="nav-label">{{ item.label }}</span>
               </a>
             </li>
           }
