@@ -1,7 +1,13 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, of, tap } from 'rxjs';
-import { MemberAccount, MemberLoginInput, MemberQrCode, PinChangeInput } from '../api/models';
+import {
+  MemberAccount,
+  MemberAnnouncement,
+  MemberLoginInput,
+  MemberQrCode,
+  PinChangeInput,
+} from '../api/models';
 
 /**
  * The signed-in member of the member portal (`/cont`). Its session is the httpOnly
@@ -50,6 +56,15 @@ export class MemberAccountService {
       map(() => undefined),
       finalize(() => this._account.set(null)),
     );
+  }
+
+  announcements(): Observable<MemberAnnouncement[]> {
+    return this.http.get<MemberAnnouncement[]>('/api/account/announcements');
+  }
+
+  /** Marks every announcement as read (the member has seen the list). */
+  markAnnouncementsRead(): Observable<void> {
+    return this.http.post<void>('/api/account/announcements/read', {});
   }
 
   qr(): Observable<MemberQrCode> {

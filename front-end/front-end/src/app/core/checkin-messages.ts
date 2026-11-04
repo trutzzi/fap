@@ -1,5 +1,5 @@
 import { CheckInResult } from './api/models';
-import { formatDayMonth } from './util/dates';
+import { formatDate } from './util/dates';
 
 export type CheckInTone = 'success' | 'warning' | 'danger';
 
@@ -49,7 +49,7 @@ export function checkInMessage(result: CheckInResult): CheckInMessage {
       return {
         tone: 'danger',
         headline: 'Abonament expirat',
-        footer: `Abonamentul a expirat pe ${sub ? formatDayMonth(sub.endDate) : '—'}. Reînnoiește-l la recepție pentru a intra la antrenament.`,
+        footer: `Abonamentul a expirat pe ${sub ? formatDate(sub.endDate) : '—'}. Reînnoiește-l la recepție pentru a intra la antrenament.`,
       };
     case 'no-subscription':
       return {

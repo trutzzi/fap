@@ -1,7 +1,7 @@
 import {
   addMonths,
   daysBetween,
-  formatDayMonth,
+  formatDate,
   formatMonth,
   isIsoDate,
   isoWeekday,
@@ -35,7 +35,8 @@ describe('dates', () => {
   });
 
   it('formats Romanian labels', () => {
-    expect(formatDayMonth('2026-10-31')).toBe('31 oct');
+    expect(formatDate('2026-10-31')).toBe('31-10-2026');
+    expect(formatDate('2026-03-05')).toBe('05-03-2026');
     expect(formatMonth('2026-10')).toBe('Octombrie 2026');
   });
 });

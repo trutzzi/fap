@@ -70,6 +70,9 @@ All responses are JSON. Errors have the shape `{ "message": "…" }`, with messa
 | PUT | `/api/members/:id/subscription` | Renew or change plan (replaces the current subscription) |
 | PUT | `/api/members/:id/rfid` | Assign, replace (`{ rfid }`) or remove (`{ rfid: null }`) a card |
 | GET | `/api/members/:id/attendance?month=YYYY-MM` | Days with check-ins in a month |
+| POST | `/api/members/bulk-delete` | Permanently delete several members with their history (`{ memberIds }`, admin) |
+| GET / POST | `/api/announcements` · DELETE `/api/announcements/:id` | Announcements to members: list with read counts, send (`{ title, body, audience }`), withdraw (staff) |
+| GET | `/api/account/announcements` · POST `/api/account/announcements/read` | The member's announcements / mark them read |
 | GET / POST | `/api/courses` · PUT / DELETE `/api/courses/:id` | Courses (deleting one also removes its trainings) |
 | GET / POST | `/api/slots` · PUT / DELETE `/api/slots/:id` | Weekly training template (writes are admin) |
 | GET | `/api/schedule?week=YYYY-MM-DD` | Week view with attendance and 4-week averages |

@@ -5,7 +5,7 @@ import { createQuery } from '../../core/data/query';
 import {
   WEEKDAYS_SHORT,
   addMonthsToMonth,
-  formatDayMonth,
+  formatDate,
   formatMonth,
   toIsoDate,
   toMonth,
@@ -80,8 +80,6 @@ export class ReportsPage {
   }
 
   protected lastSeen(date: string | null, days: number | null): string {
-    return date
-      ? `ultima dată ${formatDayMonth(date)} (acum ${days} zile)`
-      : 'nu a venit niciodată';
+    return date ? `ultima dată ${formatDate(date)} (acum ${days} zile)` : 'nu a venit niciodată';
   }
 }

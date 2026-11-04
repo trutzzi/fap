@@ -12,6 +12,7 @@ import {
   isoWeekday,
   toIsoDate,
   toMonth,
+  formatDate,
 } from '../../lib/dates.js';
 import { monthSchema, parse } from '../../lib/validation.js';
 import { METHOD_LABELS } from '../finance/labels.js';
@@ -156,7 +157,7 @@ export function reportsRouter({ db, clock }: Deps): Router {
       `prezente-${month}.csv`,
       ['Data', 'Ora', 'Membru', 'Telefon', 'Antrenament', 'Metodă'],
       rows.map((c) => [
-        fromDbDate(c.date),
+        formatDate(fromDbDate(c.date)),
         c.timestamp.toTimeString().slice(0, 5),
         `${c.member.firstName} ${c.member.lastName}`,
         c.member.phone,
@@ -182,7 +183,7 @@ export function reportsRouter({ db, clock }: Deps): Router {
       `plati-${month}.csv`,
       ['Data', 'Membru', 'Abonament', 'Metodă', 'Sumă (lei)', 'Încasat de', 'Notă'],
       rows.map((p) => [
-        fromDbDate(p.date),
+        formatDate(fromDbDate(p.date)),
         `${p.member.firstName} ${p.member.lastName}`,
         p.period ? periodLabel(p.period.plan.name, p.period.startDate, p.period.endDate) : '',
         METHOD_LABELS[p.method],
@@ -215,7 +216,7 @@ export function reportsRouter({ db, clock }: Deps): Router {
         m.email,
         m.courses.map((c) => c.name).join(', '),
         m.subscription?.planName ?? '',
-        m.subscription?.endDate ?? '',
+        m.subscription ? formatDate(m.subscription.endDate) : '',
         m.subscription ? m.subscription.used : '',
         STATUS_LABELS[m.status] ?? m.status,
         m.rfid ?? '',

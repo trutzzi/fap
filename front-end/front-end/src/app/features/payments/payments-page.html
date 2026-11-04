@@ -111,8 +111,8 @@
               <div class="who">
                 <a class="name" [routerLink]="['/membri', u.memberId]">{{ u.memberName }}</a>
                 <span class="muted small">
-                  {{ u.planName }} · {{ u.startDate | isoDate: 'short' }} –
-                  {{ u.endDate | isoDate: 'short' }} · {{ u.phone }}
+                  {{ u.planName }} · {{ u.startDate | isoDate }} – {{ u.endDate | isoDate }} ·
+                  {{ u.phone }}
                 </span>
               </div>
               <strong class="due">{{ lei(u.due ?? 0) }}</strong>
@@ -131,7 +131,7 @@
         <ul class="rows">
           @for (p of d.payments; track p.id) {
             <li class="row-item">
-              <span class="when muted small">{{ p.paidAt | date: 'd MMM, HH:mm' }}</span>
+              <span class="when muted small">{{ p.paidAt | date: 'dd-MM-yyyy, HH:mm' }}</span>
               <div class="who">
                 <a class="name" [routerLink]="['/membri', p.memberId]">{{ p.memberName }}</a>
                 <span class="muted small">

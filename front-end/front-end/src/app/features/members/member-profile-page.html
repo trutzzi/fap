@@ -8,7 +8,7 @@
           class="avatar-lg display"
           [initials]="m.initials"
           [photoUrl]="m.photoUrl"
-          [size]="96"
+          [size]="140"
           [label]="m.photoUrl ? 'Fotografia lui ' + m.fullName : null"
         />
         <button
@@ -195,7 +195,7 @@
               <div class="period-main">
                 <strong>{{ p.planName }}</strong>
                 <span class="muted small">
-                  {{ p.startDate | isoDate: 'short' }} – {{ p.endDate | isoDate }}
+                  {{ p.startDate | isoDate }} – {{ p.endDate | isoDate }}
                   @if (p.current) {
                     · curent
                   }

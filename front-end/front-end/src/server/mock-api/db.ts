@@ -82,6 +82,18 @@ export interface Db {
   refusedScans: RefusedScanEntity[];
   periods: PeriodEntity[];
   payments: PaymentEntity[];
+  announcements: AnnouncementEntity[];
+}
+
+/** A message to members; recipients are fixed when it is sent. */
+export interface AnnouncementEntity {
+  id: string;
+  title: string;
+  body: string;
+  audienceLabel: string;
+  createdAt: string;
+  createdBy: string | null;
+  recipients: { memberId: string; readAt: string | null }[];
 }
 
 /** A sold subscription period (history); unique per member and start date. */

@@ -1,0 +1,57 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 820px;
+}
+.card {
+  gap: 14px;
+}
+textarea.input {
+  min-height: 120px;
+  resize: vertical;
+  font: inherit;
+}
+.audience,
+.chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.chosen {
+  margin-top: 8px;
+  gap: 8px;
+}
+.remove {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.sent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sent li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.body {
+  margin: 6px 0;
+  white-space: pre-line;
+}
+.meta {
+  margin: 0;
+  font-size: 13px;
+}

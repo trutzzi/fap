@@ -416,5 +416,6 @@ export function seed(now = new Date()): Db {
     refusedScans: [],
     periods,
     payments: [],
+    announcements: [],
   };
 }

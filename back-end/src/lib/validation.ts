@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { STAFF_PASSWORD_MIN_LENGTH, type MemberFilter } from '../contract/models.js';
+import {
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_TITLE_MAX,
+  STAFF_PASSWORD_MIN_LENGTH,
+  type MemberFilter,
+} from '../contract/models.js';
 import { MEMBER_PIN_PATTERN } from '../domain/member-access.js';
 import { isIsoDate } from './dates.js';
 import { badRequest } from './http-error.js';
@@ -245,3 +250,35 @@ export const monthSchema = z
   .optional()
   .catch(undefined);
 export const weekSchema = z.string().refine(isIsoDate).optional().catch(undefined);
+
+const id = (message: string) => z.string(message).min(1, message);
+
+export const announcementSchema = z.object({
+  title: text('Titlul', ANNOUNCEMENT_TITLE_MAX),
+  body: text('Mesajul', ANNOUNCEMENT_BODY_MAX),
+  audience: z.discriminatedUnion(
+    'kind',
+    [
+      z.object({ kind: z.literal('all') }),
+      z.object({ kind: z.literal('active') }),
+      z.object({ kind: z.literal('course'), courseId: id('Alege un curs.') }),
+      z.object({
+        kind: z.literal('members'),
+        memberIds: z
+          .array(id('Membrul este invalid.'), 'Alege cel puțin un membru.')
+          .min(1, 'Alege cel puțin un membru.')
+          .max(1000)
+          .transform((ids) => [...new Set(ids)]),
+      }),
+    ],
+    'Alege destinatarii.',
+  ),
+});
+
+export const bulkDeleteSchema = z.object({
+  memberIds: z
+    .array(id('Membrul este invalid.'), 'Alege membrii de șters.')
+    .min(1, 'Alege membrii de șters.')
+    .max(500, 'Poți șterge cel mult 500 de membri odată.')
+    .transform((ids) => [...new Set(ids)]),
+});

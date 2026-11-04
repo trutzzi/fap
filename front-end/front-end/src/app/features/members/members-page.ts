@@ -14,7 +14,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { AcademyService } from '../../core/api/academy.service';
 import { MembersService } from '../../core/api/members.service';
 import { MemberFilter, MemberSummary } from '../../core/api/models';
+import { AuthService } from '../../core/auth/auth.service';
 import { createQuery } from '../../core/data/query';
+import { ToastService } from '../../core/ui/toast.service';
+import { ConfirmDialog } from '../../shared/dialogs/confirm-dialog';
 import { MemberFormDialog } from '../../shared/dialogs/member-form-dialog';
 import { IsoDatePipe, RfidPipe } from '../../shared/ui/formatting';
 import { Icon } from '../../shared/ui/icon';
@@ -45,6 +48,7 @@ const FILTERS: { value: MemberFilter; label: string }[] = [
     RfidPipe,
     IsoDatePipe,
     MemberFormDialog,
+    ConfirmDialog,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './members-page.html',
@@ -67,6 +71,13 @@ export class MembersPage {
   );
   protected readonly term = linkedSignal(() => this.q() ?? '');
   protected readonly creating = signal(false);
+  /** Bulk delete is admin-only, like deleting a single member. */
+  protected readonly isAdmin = inject(AuthService).isAdmin;
+  protected readonly emptySelection = new Set<string>();
+  /** Selected member ids; kept across pages and filters until deleted or cleared. */
+  protected readonly selected = signal<Set<string>>(this.emptySelection);
+  protected readonly confirmingDelete = signal(false);
+  private readonly toast = inject(ToastService);
 
   protected readonly courses = createQuery(
     () => null,
@@ -121,6 +132,36 @@ export class MembersPage {
 
   protected goToPage(page: number): void {
     this.navigate({ page: page === 1 ? null : page });
+  }
+
+  protected readonly pageSelected = computed(() => {
+    const items = this.members.value()?.items ?? [];
+    return items.length > 0 && items.every((m) => this.selected().has(m.id));
+  });
+
+  protected readonly bulkDeleteAction = () => this.membersApi.bulkDelete([...this.selected()]);
+
+  protected toggle(id: string, checked: boolean): void {
+    const next = new Set(this.selected());
+    if (checked) next.add(id);
+    else next.delete(id);
+    this.selected.set(next);
+  }
+
+  protected togglePage(checked: boolean): void {
+    const next = new Set(this.selected());
+    for (const m of this.members.value()?.items ?? []) {
+      if (checked) next.add(m.id);
+      else next.delete(m.id);
+    }
+    this.selected.set(next);
+  }
+
+  protected onBulkDeleted(): void {
+    const n = this.selected().size;
+    this.toast.success(n === 1 ? 'Membrul a fost șters.' : `${n} membri au fost șterși.`);
+    this.selected.set(this.emptySelection);
+    this.members.reload();
   }
 
   protected onCreated(member: MemberSummary): void {

@@ -201,3 +201,25 @@ strong {
     width: 96px;
   }
 }
+
+.select {
+  width: 40px;
+}
+.select input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+tr.picked {
+  background: var(--primary-soft);
+}
+.selection {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.selection strong {
+  margin-right: auto;
+}

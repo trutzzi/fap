@@ -7,7 +7,7 @@ import type {
 } from '../../contract/models.js';
 import { fromDbDate, toDbDate, type DbClient } from '../../db.js';
 import { periodEnd } from '../../domain/membership.js';
-import { formatDayMonth, toIsoDate } from '../../lib/dates.js';
+import { formatDate, toIsoDate } from '../../lib/dates.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 
 export const periodInclude = {
@@ -41,7 +41,7 @@ export function toPeriod(row: PeriodRow, currentStart: string | null): Subscript
 }
 
 export function periodLabel(planName: string, start: Date, end: Date): string {
-  return `${planName} · ${formatDayMonth(fromDbDate(start))} – ${formatDayMonth(fromDbDate(end))}`;
+  return `${planName} · ${formatDate(fromDbDate(start))} – ${formatDate(fromDbDate(end))}`;
 }
 
 export const paymentInclude = {

@@ -43,7 +43,9 @@ describe('checkInMessage', () => {
 
   it('uses warning and danger tones for denied check-ins', () => {
     expect(checkInMessage(result('limit', {})).tone).toBe('warning');
-    expect(checkInMessage(result('expired', { endDate: '2026-09-30' })).footer).toContain('30 sep');
+    expect(checkInMessage(result('expired', { endDate: '2026-09-30' })).footer).toContain(
+      '30-09-2026',
+    );
     expect(
       checkInMessage({ outcome: 'unknown-card', member: null, trainingLabel: null }).headline,
     ).toBe('Card necunoscut');

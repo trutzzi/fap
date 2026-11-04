@@ -10,7 +10,7 @@ import {
   addDays,
   daysBetween,
   daysInMonth,
-  formatDayMonth,
+  formatDate,
   isoWeekday,
   toIsoDate,
 } from '../../app/core/util/dates';
@@ -141,7 +141,7 @@ export class MockReports {
       .map((c) => {
         const m = this.db.members.find((x) => x.id === c.memberId);
         return [
-          c.date,
+          formatDate(c.date),
           new Date(c.timestamp).toTimeString().slice(0, 5),
           m ? `${m.firstName} ${m.lastName}` : '',
           m?.phone ?? '',
@@ -166,10 +166,10 @@ export class MockReports {
         const period = this.db.periods.find((x) => x.id === p.periodId);
         const plan = period && this.db.plans.find((x) => x.id === period.planId);
         return [
-          p.date,
+          formatDate(p.date),
           m ? `${m.firstName} ${m.lastName}` : '',
           period && plan
-            ? `${plan.name} · ${formatDayMonth(period.startDate)} – ${formatDayMonth(period.endDate)}`
+            ? `${plan.name} · ${formatDate(period.startDate)} – ${formatDate(period.endDate)}`
             : '',
           METHOD_LABELS[p.method],
           p.amount,
@@ -194,7 +194,7 @@ export class MockReports {
         m.email,
         m.courses.map((c) => c.name).join(', '),
         m.subscription?.planName ?? '',
-        m.subscription?.endDate ?? '',
+        m.subscription ? formatDate(m.subscription.endDate) : '',
         m.subscription ? m.subscription.used : '',
         STATUS_LABELS[m.status],
         m.rfid ?? '',

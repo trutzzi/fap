@@ -18,20 +18,6 @@ export const MONTHS = [
   'noiembrie',
   'decembrie',
 ];
-const MONTHS_SHORT = [
-  'ian',
-  'feb',
-  'mar',
-  'apr',
-  'mai',
-  'iun',
-  'iul',
-  'aug',
-  'sep',
-  'oct',
-  'nov',
-  'dec',
-];
 
 export function toIsoDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -103,15 +89,10 @@ export function minutesNow(d: Date): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-/** "31 oct" */
-export function formatDayMonth(iso: string): string {
-  const d = parseIsoDate(iso);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
-}
-
-/** "31 oct 2026" */
-export function formatShortDate(iso: string): string {
-  return `${formatDayMonth(iso)} ${iso.slice(0, 4)}`;
+/** "31-10-2026": the app's date format everywhere (dd-mm-yyyy). */
+export function formatDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}-${m}-${y}`;
 }
 
 /** "Octombrie 2026" */

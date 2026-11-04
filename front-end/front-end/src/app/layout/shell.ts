@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { path: '/kiosk', label: 'Kiosk check-in', icon: 'kiosk', roles: ALL },
   { path: '/plati', label: 'Plăți', icon: 'payments', roles: STAFF },
   { path: '/rapoarte', label: 'Rapoarte', icon: 'chart', roles: STAFF },
+  { path: '/anunturi', label: 'Anunțuri', icon: 'megaphone', roles: STAFF },
   { path: '/admin', label: 'Administrare', icon: 'settings', roles: ['admin'] },
 ];
 

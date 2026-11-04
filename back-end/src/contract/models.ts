@@ -322,6 +322,15 @@ export interface FinanceSummary {
   payments: Payment[];
 }
 
+/** `POST /members/bulk-delete` (admin): permanently deletes members and their history. */
+export interface BulkDeleteInput {
+  memberIds: string[];
+}
+
+export interface BulkDeleteResult {
+  deleted: number;
+}
+
 export interface RfidInput {
   rfid: string | null;
 }
@@ -518,6 +527,8 @@ export interface MemberAccount {
   status: MemberStatus;
   /** Most recent first. */
   history: CheckInRecord[];
+  /** Announcements the member hasn't opened yet. */
+  unreadAnnouncements: number;
 }
 
 /** The member's current check-in QR code; fetch a new one before `expiresAt`. */
@@ -610,4 +621,48 @@ export interface LogsSummary {
   targets: UptimeTarget[];
   incidents: UptimeIncident[];
   errors: ErrorLogEntry[];
+}
+
+// ---- Announcements (staff → members, shown in the member portal) ----
+
+export const ANNOUNCEMENT_TITLE_MAX = 80;
+export const ANNOUNCEMENT_BODY_MAX = 1000;
+
+/**
+ * Who receives an announcement: every member, members with a valid subscription
+ * (`active`, `expiring` or `limit`), the members of a course, or hand-picked members.
+ */
+export type AnnouncementAudience =
+  | { kind: 'all' }
+  | { kind: 'active' }
+  | { kind: 'course'; courseId: string }
+  | { kind: 'members'; memberIds: string[] };
+
+export interface NewAnnouncementInput {
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+}
+
+/** A sent announcement as staff see it (`GET /api/announcements`, newest first). */
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  createdBy: string | null;
+  /** "Toți membrii", "Cu abonament valabil", "Curs: Kickboxing", "3 membri aleși". */
+  audienceLabel: string;
+  recipients: number;
+  /** Recipients who have opened it in the member portal. */
+  read: number;
+}
+
+/** An announcement as the member sees it (`GET /api/account/announcements`). */
+export interface MemberAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
 }

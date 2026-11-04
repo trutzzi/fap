@@ -12,6 +12,7 @@ import {
   restrictCoaches,
 } from './modules/auth/auth.middleware.js';
 import { accountRouter } from './modules/account/account.routes.js';
+import { announcementsRouter } from './modules/announcements/announcements.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { checkInsRouter } from './modules/check-ins/check-ins.routes.js';
@@ -67,6 +68,7 @@ export function createApp({
   api.use(insightsRouter(deps));
   api.use(financeRouter(deps));
   api.use(reportsRouter(deps));
+  api.use(announcementsRouter(deps));
   api.use(logsRouter(deps));
   api.use(checkInsRouter(deps));
   api.use((_req, _res, next) => next(new HttpError(404, 'Resursa nu există.')));

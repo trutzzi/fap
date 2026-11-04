@@ -7,6 +7,12 @@ import {
   CreatedMember,
   MemberAccessResult,
   MemberQrCode,
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_TITLE_MAX,
+  Announcement,
+  AnnouncementAudience,
+  BulkDeleteResult,
+  MemberAnnouncement,
   STAFF_PASSWORD_MIN_LENGTH,
   StaffAccount,
   CourseInput,
@@ -24,7 +30,7 @@ import { isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
 import { DEMO_USERS, MockSessions } from './auth';
 import { MockFinance } from './finance';
 import { MockReports } from './reports';
-import { Db, MemberEntity, nextId, normalizeRfid } from './db';
+import { AnnouncementEntity, Db, MemberEntity, nextId, normalizeRfid } from './db';
 import {
   MockMemberSessions,
   QR_STEP_MS,
@@ -250,6 +256,37 @@ export function createMockApi(db: Db = seed()): express.Router {
       refreshSeconds: QR_STEP_MS / 1000,
     };
     res.set('Cache-Control', 'no-store').json(body);
+  });
+
+  api.get('/account/announcements', (req, res) => {
+    const member = portalMember(req);
+    const list: MemberAnnouncement[] = db.announcements
+      .flatMap((a) => {
+        const r = a.recipients.find((x) => x.memberId === member.id);
+        return r
+          ? [
+              {
+                id: a.id,
+                title: a.title,
+                body: a.body,
+                createdAt: a.createdAt,
+                read: r.readAt !== null,
+              },
+            ]
+          : [];
+      })
+      .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
+      .slice(0, 50);
+    res.json(list);
+  });
+
+  api.post('/account/announcements/read', (req, res) => {
+    const member = portalMember(req);
+    const now = new Date().toISOString();
+    for (const a of db.announcements) {
+      for (const r of a.recipients) if (r.memberId === member.id && !r.readAt) r.readAt = now;
+    }
+    res.status(204).end();
   });
 
   api.put('/account/pin', (req, res) => {
@@ -697,6 +734,20 @@ export function createMockApi(db: Db = seed()): express.Router {
     res.json(views.summary(member));
   });
 
+  api.post('/members/bulk-delete', (req, res) => {
+    assertAdmin(req);
+    const ids = (req.body as Body | undefined)?.['memberIds'];
+    if (!Array.isArray(ids) || ids.length === 0) throw badRequest('Alege membrii de șters.');
+    const doomed = new Set(ids.filter((id): id is string => typeof id === 'string'));
+    const before = db.members.length;
+    db.members = db.members.filter((m) => !doomed.has(m.id));
+    db.checkins = db.checkins.filter((c) => !doomed.has(c.memberId));
+    for (const a of db.announcements)
+      a.recipients = a.recipients.filter((r) => !doomed.has(r.memberId));
+    const body: BulkDeleteResult = { deleted: before - db.members.length };
+    res.json(body);
+  });
+
   api.delete('/members/:id', (req, res) => {
     assertAdmin(req);
     const member = findMember(req.params['id']);
@@ -819,6 +870,88 @@ export function createMockApi(db: Db = seed()): express.Router {
       method: body['rfid'] ? 'rfid' : qr ? 'qr' : 'manual',
     });
     return reply('allowed', label);
+  });
+
+  // ---- Announcements (staff → members) ----
+
+  const announcementView = (a: AnnouncementEntity): Announcement => ({
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    createdAt: a.createdAt,
+    createdBy: a.createdBy,
+    audienceLabel: a.audienceLabel,
+    recipients: a.recipients.length,
+    read: a.recipients.filter((r) => r.readAt !== null).length,
+  });
+
+  api.get('/announcements', (_req, res) => {
+    res.json(
+      [...db.announcements]
+        .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
+        .map(announcementView),
+    );
+  });
+
+  api.post('/announcements', (req, res) => {
+    const b = (req.body ?? {}) as Body;
+    const title = text(b, 'title', 'Titlul', { max: ANNOUNCEMENT_TITLE_MAX });
+    const body = text(b, 'body', 'Mesajul', { max: ANNOUNCEMENT_BODY_MAX });
+    const audience = b['audience'] as Partial<AnnouncementAudience> & Record<string, unknown>;
+    let memberIds: string[];
+    let label: string;
+    switch (audience?.kind) {
+      case 'all':
+        memberIds = db.members.map((m) => m.id);
+        label = 'Toți membrii';
+        break;
+      case 'active':
+        memberIds = db.members
+          .filter((m) => ['active', 'expiring', 'limit'].includes(views.summary(m).status))
+          .map((m) => m.id);
+        label = 'Cu abonament valabil';
+        break;
+      case 'course': {
+        const course = db.courses.find((c) => c.id === audience['courseId']);
+        if (!course) throw badRequest('Cursul ales nu există.');
+        memberIds = db.members.filter((m) => m.courseIds.includes(course.id)).map((m) => m.id);
+        label = `Curs: ${course.name}`;
+        break;
+      }
+      case 'members': {
+        const ids = [...new Set(Array.isArray(audience['memberIds']) ? audience['memberIds'] : [])];
+        if (ids.length === 0) throw badRequest('Alege cel puțin un membru.');
+        if (!ids.every((id) => db.members.some((m) => m.id === id))) {
+          throw badRequest('Unul dintre membri nu există.');
+        }
+        memberIds = ids as string[];
+        label = ids.length === 1 ? '1 membru ales' : `${ids.length} membri aleși`;
+        break;
+      }
+      default:
+        throw badRequest('Alege destinatarii.');
+    }
+    if (memberIds.length === 0) {
+      throw badRequest('Niciun membru nu corespunde destinatarilor aleși.');
+    }
+    const entity: AnnouncementEntity = {
+      id: nextId('ann'),
+      title,
+      body,
+      audienceLabel: label,
+      createdAt: new Date().toISOString(),
+      createdBy: sessions.user(req)!.name,
+      recipients: memberIds.map((memberId) => ({ memberId, readAt: null })),
+    };
+    db.announcements.push(entity);
+    res.status(201).json(announcementView(entity));
+  });
+
+  api.delete('/announcements/:id', (req, res) => {
+    const before = db.announcements.length;
+    db.announcements = db.announcements.filter((a) => a.id !== req.params['id']);
+    if (db.announcements.length === before) throw new HttpError(404, 'Anunțul nu a fost găsit.');
+    res.status(204).end();
   });
 
   // ---- Logs (admin only) ----

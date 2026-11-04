@@ -44,7 +44,7 @@ import { StaffAccountDialog } from './staff-account-dialog';
             <span class="muted small last">
               {{
                 a.lastLoginAt
-                  ? 'Ultima autentificare: ' + (a.lastLoginAt | date: 'd MMM y, HH:mm')
+                  ? 'Ultima autentificare: ' + (a.lastLoginAt | date: 'dd-MM-yyyy, HH:mm')
                   : 'Nu s-a autentificat încă'
               }}
             </span>

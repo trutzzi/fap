@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type {
+  BulkDeleteResult,
   CreatedMember,
   MemberAttendance,
   MemberFilter,
@@ -13,6 +14,7 @@ import { today } from '../../lib/clock.js';
 import { addMonthsToMonth, toMonth } from '../../lib/dates.js';
 import { badRequest, conflict, notFound } from '../../lib/http-error.js';
 import {
+  bulkDeleteSchema,
   memberSchema,
   membersQuerySchema,
   monthSchema,
@@ -127,6 +129,15 @@ export function membersRouter(deps: Deps): Router {
     const access = await issueMemberAccess(deps, member.id);
     const body: CreatedMember = { ...(await summaryOrThrow(member.id)), access };
     res.status(201).json(body);
+  });
+
+  /** Admin: permanently deletes several members with all their history. */
+  router.post('/bulk-delete', async (req, res) => {
+    assertAdmin(req);
+    const { memberIds } = parse(bulkDeleteSchema, req.body);
+    const { count } = await db.member.deleteMany({ where: { id: { in: memberIds } } });
+    const body: BulkDeleteResult = { deleted: count };
+    res.json(body);
   });
 
   router.get('/:id', async (req, res) => {

@@ -28,8 +28,8 @@ import { Modal } from '../ui/modal';
         <p class="muted" style="margin: 0">
           {{ memberName() }}
           @if (period(); as p) {
-            · {{ p.planName }}, {{ p.startDate | isoDate: 'short' }} –
-            {{ p.endDate | isoDate: 'short' }}
+            · {{ p.planName }}, {{ p.startDate | isoDate }} –
+            {{ p.endDate | isoDate }}
             @if (p.price !== null) {
               · rest de plată <strong>{{ p.due }} lei</strong>
             }

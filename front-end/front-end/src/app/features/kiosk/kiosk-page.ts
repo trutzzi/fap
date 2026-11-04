@@ -17,7 +17,7 @@ import { AcademyService } from '../../core/api/academy.service';
 import { CheckInRequest, CheckInResult, MEMBER_QR_PREFIX } from '../../core/api/models';
 import { checkInMessage } from '../../core/checkin-messages';
 import { createQuery, errorMessage } from '../../core/data/query';
-import { formatDayMonth } from '../../core/util/dates';
+import { formatDate } from '../../core/util/dates';
 import { FeedbackSound } from '../../core/util/feedback-sound';
 import { clock, onInterval } from '../../core/util/interval';
 import { MemberPickerDialog } from '../../shared/dialogs/member-picker-dialog';
@@ -114,8 +114,8 @@ export class KioskPage {
       until: !sub
         ? ''
         : result.outcome === 'expired'
-          ? `Expirat pe ${formatDayMonth(sub.endDate)}`
-          : `Valabil până la ${formatDayMonth(sub.endDate)}`,
+          ? `Expirat pe ${formatDate(sub.endDate)}`
+          : `Valabil până la ${formatDate(sub.endDate)}`,
     };
   });
 

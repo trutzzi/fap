@@ -30,7 +30,7 @@ import {
   WEEKDAYS_SHORT,
   addMonthsToMonth,
   daysInMonth,
-  formatDayMonth,
+  formatDate,
   formatMonth,
   isoWeekday,
   toIsoDate,
@@ -191,7 +191,7 @@ export class MemberProfilePage {
 
   protected historyDate(record: CheckInRecord): string {
     const iso = toIsoDate(new Date(record.timestamp));
-    return `${WEEKDAYS_SHORT[isoWeekday(iso) - 1]}, ${formatDayMonth(iso)}`;
+    return `${WEEKDAYS_SHORT[isoWeekday(iso) - 1]}, ${formatDate(iso)}`;
   }
 
   protected shiftMonth(delta: number): void {

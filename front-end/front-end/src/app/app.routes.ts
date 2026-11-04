@@ -84,6 +84,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports-page').then((m) => m.ReportsPage),
       },
       {
+        path: 'anunturi',
+        canActivate: [staffGuard],
+        title: 'Anunțuri · FightAcademy',
+        loadComponent: () =>
+          import('./features/announcements/announcements-page').then((m) => m.AnnouncementsPage),
+      },
+      {
         path: 'logs',
         canActivate: [adminGuard],
         title: 'Logs · FightAcademy',

@@ -53,6 +53,7 @@ function createDb(): Db {
     refusedScans: [],
     periods: [],
     payments: [],
+    announcements: [],
   };
 }
 
@@ -183,7 +184,7 @@ describe('Views', () => {
     });
     const alerts = views.dashboard().alerts;
     expect(alerts.map((a) => a.kind)).toEqual(['limit', 'expiring', 'no-card']);
-    expect(alerts[0].detail).toBe('A atins limita de 12 ședințe · expiră 31 oct');
+    expect(alerts[0].detail).toBe('A atins limita de 12 ședințe · expiră 31-10-2026');
     expect(alerts[2].detail).toBe('1 membru fără card');
   });
 });

@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -16,7 +17,8 @@ import { PIN_PATTERN, digitsOnly } from '../../core/account/pin';
 import { CheckInRecord } from '../../core/api/models';
 import { createQuery, errorMessage } from '../../core/data/query';
 import { ToastService } from '../../core/ui/toast.service';
-import { WEEKDAYS_SHORT, formatDayMonth, isoWeekday, toIsoDate } from '../../core/util/dates';
+import { WEEKDAYS_SHORT, formatDate, isoWeekday, toIsoDate } from '../../core/util/dates';
+import { InstallPrompt } from '../../core/util/install-prompt';
 import { onInterval } from '../../core/util/interval';
 import { IsoDatePipe } from '../../shared/ui/formatting';
 import { QrCode } from '../../shared/ui/qr-code';
@@ -56,6 +58,12 @@ export class AccountPage {
     () => null,
     () => this.accounts.qr(),
   );
+  protected readonly install = inject(InstallPrompt);
+  /** Newest first; unread ones keep their "Nou" badge until the next refresh. */
+  protected readonly announcements = createQuery(
+    () => null,
+    () => this.accounts.announcements(),
+  );
 
   protected readonly savingPin = signal(false);
   protected readonly pinSubmitted = signal(false);
@@ -67,18 +75,24 @@ export class AccountPage {
 
   constructor() {
     onInterval(QR_REFRESH_MS, () => this.qr.reload());
-    onInterval(ACCOUNT_REFRESH_MS, () => this.refresh());
+    onInterval(ACCOUNT_REFRESH_MS, () => this.refreshAll());
     // Phones pause timers in the background: refresh as soon as the page is shown again.
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const onVisible = () => {
         if (document.visibilityState === 'visible') {
           this.qr.reload();
-          this.refresh();
+          this.refreshAll();
         }
       };
       document.addEventListener('visibilitychange', onVisible);
       destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', onVisible));
+    });
+    // Seen once listed: mark them read (the server keeps the date for the staff's counts).
+    effect(() => {
+      if (this.announcements.value()?.some((a) => !a.read)) {
+        untracked(() => this.accounts.markAnnouncementsRead().subscribe(() => this.refresh()));
+      }
     });
     // Signed out (logout, or reception issued a new PIN): back to the login.
     effect(() => {
@@ -88,7 +102,7 @@ export class AccountPage {
 
   protected historyDate(record: CheckInRecord): string {
     const iso = toIsoDate(new Date(record.timestamp));
-    return `${WEEKDAYS_SHORT[isoWeekday(iso) - 1]}, ${formatDayMonth(iso)}`;
+    return `${WEEKDAYS_SHORT[isoWeekday(iso) - 1]}, ${formatDate(iso)}`;
   }
 
   protected pinInvalid(name: 'currentPin' | 'newPin'): boolean {
@@ -124,5 +138,11 @@ export class AccountPage {
 
   private refresh(): void {
     this.accounts.load().subscribe();
+  }
+
+  /** Account data and announcements, refreshed together (interval, tab shown again). */
+  private refreshAll(): void {
+    this.refresh();
+    this.announcements.reload();
   }
 }

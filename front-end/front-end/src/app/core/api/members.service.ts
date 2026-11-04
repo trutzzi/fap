@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  BulkDeleteResult,
   CreatedMember,
   MemberAccessResult,
   MemberAttendance,
@@ -49,6 +50,11 @@ export class MembersService {
 
   update(id: string, input: MemberInput): Observable<MemberSummary> {
     return this.http.put<MemberSummary>(`/api/members/${encodeURIComponent(id)}`, input);
+  }
+
+  /** Admin: permanently deletes several members with all their history. */
+  bulkDelete(memberIds: string[]): Observable<BulkDeleteResult> {
+    return this.http.post<BulkDeleteResult>('/api/members/bulk-delete', { memberIds });
   }
 
   delete(id: string): Observable<void> {

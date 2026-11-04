@@ -1,5 +1,5 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { formatDayMonth, formatShortDate } from '../../core/util/dates';
+import { formatDate } from '../../core/util/dates';
 
 /** "04A391F2" → "04A3·91F2" */
 @Pipe({ name: 'rfid' })
@@ -10,11 +10,10 @@ export class RfidPipe implements PipeTransform {
   }
 }
 
-/** `YYYY-MM-DD` → "31 oct 2026", or "31 oct" with `'short'`. */
+/** `YYYY-MM-DD` → "31-10-2026". */
 @Pipe({ name: 'isoDate' })
 export class IsoDatePipe implements PipeTransform {
-  transform(value: string | null | undefined, format: 'long' | 'short' = 'long'): string {
-    if (!value) return '—';
-    return format === 'short' ? formatDayMonth(value) : formatShortDate(value);
+  transform(value: string | null | undefined): string {
+    return value ? formatDate(value) : '—';
   }
 }

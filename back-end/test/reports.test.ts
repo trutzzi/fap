@@ -98,7 +98,7 @@ describe('reports', () => {
     expect(text.charCodeAt(0)).toBe(0xfeff);
     expect(text).toContain('Nume;Telefon;Email;Cursuri;Abonament');
     expect(text).toContain(`"'=HYPERLINK(""x"") Pop"`);
-    expect(text).toContain('Kickboxing;Nelimitat;2026-10-31');
+    expect(text).toContain('Kickboxing;Nelimitat;31-10-2026');
   });
 
   it('is not available to coaches', async () => {

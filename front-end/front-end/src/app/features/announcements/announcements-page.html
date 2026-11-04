@@ -1,0 +1,142 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Apar în contul de membru (/cont)</p>
+      <h1 class="page-title">Anunțuri</h1>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="compose-title">
+    <h2 id="compose-title" class="section-title">Anunț nou</h2>
+    <form class="form" [formGroup]="form" (ngSubmit)="send()" novalidate>
+      @if (error(); as message) {
+        <div class="form-error" role="alert">{{ message }}</div>
+      }
+      <div class="field">
+        <label for="ann-title">Titlu</label>
+        <input
+          id="ann-title"
+          class="input"
+          formControlName="title"
+          [maxlength]="titleMax"
+          [attr.aria-invalid]="invalid('title')"
+        />
+        @if (invalid('title')) {
+          <span class="field-error">Titlul este obligatoriu.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="ann-body">Mesaj</label>
+        <textarea
+          id="ann-body"
+          class="input"
+          rows="5"
+          formControlName="body"
+          [maxlength]="bodyMax"
+          [attr.aria-invalid]="invalid('body')"
+        ></textarea>
+        <span class="field-hint" [class.field-error]="invalid('body')">
+          {{ form.controls.body.value.length }} / {{ bodyMax }} caractere
+        </span>
+      </div>
+
+      <fieldset class="field">
+        <legend>Destinatari</legend>
+        <div class="audience">
+          <label class="check">
+            <input type="radio" formControlName="kind" value="all" /> Toți membrii
+          </label>
+          <label class="check">
+            <input type="radio" formControlName="kind" value="active" /> Cu abonament valabil
+          </label>
+          <label class="check">
+            <input type="radio" formControlName="kind" value="course" /> Membrii unui curs
+          </label>
+          <label class="check">
+            <input type="radio" formControlName="kind" value="members" /> Membri aleși
+          </label>
+        </div>
+        @if (form.controls.kind.value === 'course') {
+          <select class="input" formControlName="courseId" aria-label="Cursul">
+            <option value="">Alege cursul…</option>
+            @for (c of courses.value() ?? []; track c.id) {
+              <option [value]="c.id">{{ c.name }} ({{ c.memberCount }})</option>
+            }
+          </select>
+        }
+        @if (form.controls.kind.value === 'members') {
+          <div class="chosen">
+            @for (m of chosen(); track m.id) {
+              <span class="chip">
+                {{ m.fullName }}
+                <button
+                  type="button"
+                  class="remove"
+                  [attr.aria-label]="'Scoate pe ' + m.fullName"
+                  (click)="removeMember(m.id)"
+                >
+                  ×
+                </button>
+              </span>
+            }
+            <button type="button" class="btn btn-sm" (click)="picking.set(true)">
+              + Adaugă membru
+            </button>
+          </div>
+        }
+      </fieldset>
+
+      <div class="form-footer">
+        <button type="submit" class="btn btn-primary" [disabled]="sending()">
+          {{ sending() ? 'Se trimite…' : 'Trimite anunțul' }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="sent-title">
+    <h2 id="sent-title" class="section-title">Trimise</h2>
+    <ul class="sent">
+      @for (a of announcements.value() ?? []; track a.id) {
+        <li>
+          <div class="head">
+            <strong>{{ a.title }}</strong>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="withdrawing.set(a)">
+              Retrage
+            </button>
+          </div>
+          <p class="body">{{ a.body }}</p>
+          <p class="muted meta">
+            {{ a.createdAt | date: 'dd-MM-yyyy, HH:mm' }}
+            @if (a.createdBy) {
+              · {{ a.createdBy }}
+            }
+            · {{ a.audienceLabel }} · citit de {{ a.read }} din {{ a.recipients }}
+          </p>
+        </li>
+      } @empty {
+        <li class="state-message">
+          {{ announcements.loading() ? 'Se încarcă…' : 'Niciun anunț trimis încă.' }}
+        </li>
+      }
+    </ul>
+  </section>
+</div>
+
+@if (picking()) {
+  <app-member-picker-dialog
+    heading="Adaugă destinatar"
+    (picked)="addMember($event)"
+    (closed)="picking.set(false)"
+  />
+}
+@if (withdrawing(); as a) {
+  <app-confirm-dialog
+    heading="Retrage anunțul"
+    [message]="'Retragi „' + a.title + '”? Membrii nu îl vor mai vedea în cont.'"
+    confirmLabel="Retrage"
+    [action]="withdrawAction"
+    (done)="onWithdrawn()"
+    (closed)="withdrawing.set(null)"
+  />
+}

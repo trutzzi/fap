@@ -15,6 +15,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { InstallPrompt } from './core/util/install-prompt';
 
 registerLocaleData(localeRo);
 
@@ -30,5 +31,7 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() =>
       isPlatformBrowser(inject(PLATFORM_ID)) ? inject(AuthService).restore() : undefined,
     ),
+    // Catch the browser's one-time install prompt, which fires right after the page loads.
+    provideAppInitializer(() => void inject(InstallPrompt)),
   ],
 };

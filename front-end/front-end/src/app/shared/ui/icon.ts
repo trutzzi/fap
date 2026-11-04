@@ -17,7 +17,8 @@ export type IconName =
   | 'alert'
   | 'card'
   | 'menu'
-  | 'chart';
+  | 'chart'
+  | 'megaphone';
 
 /** Decorative stroke icon; give the surrounding control an accessible name. */
 @Component({
@@ -91,6 +92,10 @@ export type IconName =
         }
         @case ('chart') {
           <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+        }
+        @case ('megaphone') {
+          <path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z" />
+          <path d="M17 9a4 4 0 0 1 0 6M7 14l1 5h3" />
         }
         @case ('menu') {
           <path d="M4 6h16M4 12h16M4 18h16" />

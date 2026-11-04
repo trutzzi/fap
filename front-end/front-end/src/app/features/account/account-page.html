@@ -35,6 +35,45 @@
       </div>
     </section>
 
+    @if (!install.installed() && (install.canInstall() || install.isIos())) {
+      <section class="card install" aria-labelledby="install-title">
+        <h2 id="install-title" class="section-title">Aplicația pe telefon</h2>
+        @if (install.canInstall()) {
+          <p class="muted small">
+            Pune Fight Academy pe ecranul principal, ca să ai codul QR la un tap.
+          </p>
+          <button type="button" class="btn btn-primary" (click)="install.install()">
+            Instalează aplicația
+          </button>
+        } @else {
+          <p class="muted small">
+            Pe iPhone: apasă <strong>Partajează</strong> (pătratul cu săgeată) în Safari, apoi
+            <strong>„Adaugă pe ecranul principal”</strong>.
+          </p>
+        }
+      </section>
+    }
+
+    @if (announcements.value()?.length) {
+      <section class="card" aria-labelledby="news-title">
+        <h2 id="news-title" class="section-title">Anunțuri</h2>
+        <ul class="news">
+          @for (n of announcements.value(); track n.id) {
+            <li>
+              <div class="news-head">
+                <strong>{{ n.title }}</strong>
+                @if (!n.read) {
+                  <span class="badge badge--success">Nou</span>
+                }
+              </div>
+              <p class="news-body">{{ n.body }}</p>
+              <span class="muted small">{{ n.createdAt | date: 'dd-MM-yyyy, HH:mm' }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     <section class="card" aria-labelledby="sub-title">
       <h2 id="sub-title" class="section-title">Abonament</h2>
       @if (a.subscription; as s) {

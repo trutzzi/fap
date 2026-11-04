@@ -100,3 +100,24 @@ summary {
 details[open] summary {
   margin-bottom: 12px;
 }
+
+.news {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.news-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.news-body {
+  margin: 4px 0;
+  white-space: pre-line;
+}
+.install {
+  align-items: flex-start;
+}

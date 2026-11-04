@@ -50,6 +50,21 @@
     </label>
   </div>
 
+  @if (selected().size > 0) {
+    <div class="selection card" role="region" aria-label="Membri selectați">
+      <strong
+        >{{ selected().size }}
+        {{ selected().size === 1 ? 'membru selectat' : 'membri selectați' }}</strong
+      >
+      <button type="button" class="btn btn-sm btn-ghost" (click)="selected.set(emptySelection)">
+        Anulează selecția
+      </button>
+      <button type="button" class="btn btn-sm btn-danger" (click)="confirmingDelete.set(true)">
+        Șterge definitiv
+      </button>
+    </div>
+  }
+
   <div class="table-wrap" [class.loading]="members.loading()">
     <table>
       <caption class="visually-hidden">
@@ -57,6 +72,16 @@
       </caption>
       <thead>
         <tr>
+          @if (isAdmin()) {
+            <th scope="col" class="select">
+              <input
+                type="checkbox"
+                aria-label="Selectează toți membrii de pe pagină"
+                [checked]="pageSelected()"
+                (change)="togglePage($any($event.target).checked)"
+              />
+            </th>
+          }
           <th scope="col">Membru</th>
           <th scope="col">Cursuri</th>
           <th scope="col">Abonament</th>
@@ -68,7 +93,17 @@
       </thead>
       <tbody>
         @for (m of members.value()?.items ?? []; track m.id) {
-          <tr>
+          <tr [class.picked]="selected().has(m.id)">
+            @if (isAdmin()) {
+              <td class="select" data-label="Selectează">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Selectează ' + m.fullName"
+                  [checked]="selected().has(m.id)"
+                  (change)="toggle(m.id, $any($event.target).checked)"
+                />
+              </td>
+            }
             <td data-label="Membru">
               <a class="member" [routerLink]="['/membri', m.id]">
                 <app-member-avatar [initials]="m.initials" [photoUrl]="m.photoUrl" [size]="36" />
@@ -126,7 +161,11 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" class="state-message" [class.state-message--error]="members.error()">
+            <td
+              [attr.colspan]="isAdmin() ? 8 : 7"
+              class="state-message"
+              [class.state-message--error]="members.error()"
+            >
               {{
                 members.error() ??
                   (members.loading() ? 'Se încarcă…' : 'Niciun membru nu corespunde filtrelor.')
@@ -167,6 +206,21 @@
     </div>
   </nav>
 </div>
+
+@if (confirmingDelete()) {
+  <app-confirm-dialog
+    heading="Șterge membrii definitiv"
+    [message]="
+      'Ștergi definitiv ' +
+      (selected().size === 1 ? '1 membru' : selected().size + ' membri') +
+      ', împreună cu tot istoricul lor: check-in-uri, abonamente, plăți, fotografii și contul de membru. Acțiunea nu poate fi anulată.'
+    "
+    [confirmLabel]="'Da, șterge ' + selected().size"
+    [action]="bulkDeleteAction"
+    (done)="onBulkDeleted()"
+    (closed)="confirmingDelete.set(false)"
+  />
+}
 
 @if (creating()) {
   <app-member-form-dialog (saved)="onCreated($event)" (closed)="creating.set(false)" />

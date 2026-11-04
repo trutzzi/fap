@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import type { MemberAccount, MemberQrCode } from '../../contract/models.js';
+import type { MemberAccount, MemberAnnouncement, MemberQrCode } from '../../contract/models.js';
 import type { Deps } from '../../deps.js';
 import { newQrSecret, phoneKey, QR_STEP_MS, qrToken } from '../../domain/member-access.js';
 import { today } from '../../lib/clock.js';
@@ -106,6 +106,9 @@ export function accountRouter({ db, clock }: Deps): Router {
       subscription,
       status,
       history: await checkInHistory(db, summary, HISTORY_SIZE),
+      unreadAnnouncements: await db.announcementRecipient.count({
+        where: { memberId, readAt: null },
+      }),
     };
   }
 
@@ -131,6 +134,33 @@ export function accountRouter({ db, clock }: Deps): Router {
       refreshSeconds: QR_STEP_MS / 1000,
     };
     res.set('Cache-Control', 'no-store').json(body);
+  });
+
+  /** The member's announcements, newest first (the last 50). */
+  router.get('/announcements', async (req, res) => {
+    const rows = await db.announcementRecipient.findMany({
+      where: { memberId: req.member!.id },
+      include: { announcement: true },
+      orderBy: { announcement: { createdAt: 'desc' } },
+      take: 50,
+    });
+    const body: MemberAnnouncement[] = rows.map(({ announcement: a, readAt }) => ({
+      id: a.id,
+      title: a.title,
+      body: a.body,
+      createdAt: a.createdAt.toISOString(),
+      read: readAt !== null,
+    }));
+    res.json(body);
+  });
+
+  /** Marks all of the member's announcements as read (they opened the list). */
+  router.post('/announcements/read', async (req, res) => {
+    await db.announcementRecipient.updateMany({
+      where: { memberId: req.member!.id, readAt: null },
+      data: { readAt: clock() },
+    });
+    res.status(204).end();
   });
 
   router.put('/pin', async (req, res) => {

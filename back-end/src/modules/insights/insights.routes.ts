@@ -9,7 +9,7 @@ import {
   addDays,
   addMonthsToMonth,
   daysBetween,
-  formatDayMonth,
+  formatDate,
   startOfWeek,
   toMonth,
 } from '../../lib/dates.js';
@@ -175,7 +175,7 @@ export function insightsRouter({ db, clock }: Deps): Router {
           kind: 'limit' as const,
           memberId: m.id,
           title: m.fullName,
-          detail: `A atins limita de ${m.subscription!.sessionLimit} ședințe · expiră ${formatDayMonth(m.subscription!.endDate)}`,
+          detail: `A atins limita de ${m.subscription!.sessionLimit} ședințe · expiră ${formatDate(m.subscription!.endDate)}`,
         })),
       ...summaries
         .filter((m) => endingSoon(m) && m.status !== 'limit')
@@ -188,7 +188,7 @@ export function insightsRouter({ db, clock }: Deps): Router {
           kind: 'expiring' as const,
           memberId: m.id,
           title: m.fullName,
-          detail: `Abonament ${m.subscription!.planName} expiră pe ${formatDayMonth(m.subscription!.endDate)}`,
+          detail: `Abonament ${m.subscription!.planName} expiră pe ${formatDate(m.subscription!.endDate)}`,
         })),
     ].slice(0, 5);
     const withoutCard = summaries.filter((m) => m.rfid === null).length;

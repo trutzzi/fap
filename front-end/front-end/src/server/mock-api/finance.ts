@@ -12,7 +12,7 @@ import {
   addMonths,
   addMonthsToMonth,
   daysBetween,
-  formatDayMonth,
+  formatDate,
   toIsoDate,
   toMonth,
 } from '../../app/core/util/dates';
@@ -120,7 +120,7 @@ export class MockFinance {
       memberName: `${member.firstName} ${member.lastName}`,
       periodId: p.periodId,
       periodLabel: period
-        ? `${planName} · ${formatDayMonth(period.startDate)} – ${formatDayMonth(period.endDate)}`
+        ? `${planName} · ${formatDate(period.startDate)} – ${formatDate(period.endDate)}`
         : null,
       amount: p.amount,
       method: p.method,

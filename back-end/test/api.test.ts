@@ -231,7 +231,7 @@ describe('catalog and insights', () => {
     expect(dashboard.body).toMatchObject({
       activeMembers: 1,
       checkinsThisMonth: 12,
-      alerts: [{ kind: 'limit', detail: 'A atins limita de 12 ședințe · expiră 31 oct' }],
+      alerts: [{ kind: 'limit', detail: 'A atins limita de 12 ședințe · expiră 31-10-2026' }],
       today: [{ name: 'Kickboxing', state: 'upcoming', startsInMin: 15 }],
     });
     expect(dashboard.body.week).toHaveLength(7);
@@ -266,5 +266,33 @@ describe('double check-in protection', () => {
     await db.checkIn.create({ data: row });
     // If a future `prisma migrate dev` drops the partial unique index, this fails.
     await expect(db.checkIn.create({ data: row })).rejects.toMatchObject({ code: 'P2002' });
+  });
+});
+
+describe('bulk delete', () => {
+  it('lets an admin delete several members with their history', async () => {
+    const a = await createMember();
+    const b = await createMember({ firstName: 'Ion', rfid: null });
+    const c = await createMember({ firstName: 'Ana', rfid: null });
+    await addPastCheckIns(a.id, 3);
+    const res = await api
+      .post('/api/members/bulk-delete')
+      .send({ memberIds: [a.id, b.id, a.id, 'nope'] })
+      .expect(200);
+    expect(res.body).toEqual({ deleted: 2 });
+    expect(await db.member.findMany({ select: { id: true } })).toEqual([{ id: c.id }]);
+    expect(await db.checkIn.count()).toBe(0);
+    const empty = await api.post('/api/members/bulk-delete').send({ memberIds: [] }).expect(400);
+    expect(empty.body.message).toBe('Alege membrii de șters.');
+  });
+
+  it('is admin-only', async () => {
+    const { id } = await createMember();
+    const reception = await signedIn('reception');
+    await reception
+      .post('/api/members/bulk-delete')
+      .send({ memberIds: [id] })
+      .expect(403);
+    expect(await db.member.count()).toBe(1);
   });
 });
