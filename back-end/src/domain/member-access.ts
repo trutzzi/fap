@@ -76,6 +76,13 @@ export function announcementSmsText(
   return (head + text.slice(0, room).trimEnd() + tail).slice(0, SMS_MAX_LENGTH);
 }
 
+/** "Ne e dor de tine" as one GSM SMS, with the portal link. */
+export function inactivityNudgeText(clubName: string, days: number, portalUrl: string): string {
+  const body = `: ne e dor de tine! N-ai mai fost la antrenament de ${days} zile. Te asteptam! ${portalUrl}`;
+  const club = toGsmText(clubName).trim() || 'Fight Academy';
+  return toGsmText(club.slice(0, Math.max(SMS_MAX_LENGTH - body.length, 0)).trim() + body);
+}
+
 // ---- Rotating QR code ----
 
 /** The code changes every step… */

@@ -40,6 +40,7 @@ import { MemberAccessDialog } from '../../shared/dialogs/member-access-dialog';
 import { MemberFormDialog } from '../../shared/dialogs/member-form-dialog';
 import { PhotoDialog } from '../../shared/dialogs/photo-dialog';
 import { PaymentDialog } from '../../shared/dialogs/payment-dialog';
+import { MemberFreezes } from './member-freezes';
 import { MemberPeriods } from './member-periods';
 import { RfidDialog } from '../../shared/dialogs/rfid-dialog';
 import { SubscriptionDialog } from '../../shared/dialogs/subscription-dialog';
@@ -90,6 +91,7 @@ interface CalendarCell {
     PhotoDialog,
     PaymentDialog,
     MemberPeriods,
+    MemberFreezes,
     MemberAccessDialog,
     MemberAvatar,
   ],

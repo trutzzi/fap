@@ -18,13 +18,18 @@ export const DEFAULT_CLUB: Club = {
   smsEnabled: false,
   kioskVolume: 60,
   expiryReminderSms: false,
+  googleReviewUrl: '',
+  reviewAfterCheckIns: 10,
+  inactivityNudge: false,
+  inactivityNudgeSms: false,
 };
 
 export async function loadClub(db: Db, defaults: Club = DEFAULT_CLUB): Promise<Club> {
   const row = await db.club.findUnique({ where: { id: CLUB_ID } });
   if (!row) return defaults;
   const { name, address, phone, email, website, timezone } = row;
-  const { smsEnabled, kioskVolume, expiryReminderSms } = row;
+  const { smsEnabled, kioskVolume, expiryReminderSms, googleReviewUrl } = row;
+  const { reviewAfterCheckIns, inactivityNudge, inactivityNudgeSms } = row;
   return {
     name,
     address,
@@ -35,6 +40,10 @@ export async function loadClub(db: Db, defaults: Club = DEFAULT_CLUB): Promise<C
     smsEnabled,
     kioskVolume,
     expiryReminderSms,
+    googleReviewUrl,
+    reviewAfterCheckIns,
+    inactivityNudge,
+    inactivityNudgeSms,
   };
 }
 

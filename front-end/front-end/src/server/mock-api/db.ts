@@ -3,6 +3,7 @@ import {
   PaymentMethod,
   PlanId,
   RefusalReason,
+  SubscriptionFreeze,
   TrainingSlot,
 } from '../../app/core/api/models';
 
@@ -29,6 +30,8 @@ export interface SubscriptionEntity {
   planId: PlanId;
   /** Period runs from `startDate` to one month later (exclusive). */
   startDate: string;
+  /** Days added by freezes (the end date moves later). */
+  extraDays?: number;
 }
 
 export interface MemberEntity {
@@ -48,6 +51,8 @@ export interface MemberEntity {
   pin: string | null;
   /** HMAC key of the rotating check-in QR code; created on first use. */
   qrSecret: string | null;
+  /** The member tapped or closed the Google review card. */
+  reviewDone?: boolean;
 }
 
 /** A refused scan, shown in the coach's class list; never counts as a session. */
@@ -84,6 +89,7 @@ export interface Db {
   payments: PaymentEntity[];
   announcements: AnnouncementEntity[];
   notifications: NotificationEntity[];
+  freezes: (SubscriptionFreeze & { memberId: string })[];
 }
 
 /** A member portal inbox item (check-ins, announcements); the mock never pushes. */

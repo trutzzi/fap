@@ -125,6 +125,10 @@ describe('admin settings', () => {
       smsEnabled: true,
       kioskVolume: 35,
       expiryReminderSms: true,
+      googleReviewUrl: 'https://g.page/r/abc/review',
+      reviewAfterCheckIns: 12,
+      inactivityNudge: true,
+      inactivityNudgeSms: false,
     };
     await admin.put('/api/club').send(club).expect(200);
     expect((await request(app).get('/api/club')).body).toEqual(club);

@@ -217,6 +217,18 @@ export const clubSchema = z.object({
   smsEnabled: z.boolean('Opțiunea pentru SMS este invalidă.').default(false),
   kioskVolume: int('Volumul', 0, 100).default(60),
   expiryReminderSms: z.boolean('Opțiunea pentru reamintiri este invalidă.').default(false),
+  googleReviewUrl: z
+    .string()
+    .trim()
+    .max(500, 'Linkul de recenzie este prea lung.')
+    .refine(
+      (v) => !v || /^https:\/\/\S+$/.test(v),
+      'Linkul de recenzie trebuie să înceapă cu https://.',
+    )
+    .default(''),
+  reviewAfterCheckIns: int('Numărul de check-in-uri', 1, 500).default(10),
+  inactivityNudge: z.boolean('Opțiunea „Ne e dor de tine” este invalidă.').default(false),
+  inactivityNudgeSms: z.boolean('Opțiunea SMS este invalidă.').default(false),
 });
 
 export const checkInSchema = z
@@ -300,4 +312,10 @@ export const pushSubscriptionSchema = z.object({
     p256dh: z.string().min(1).max(200),
     auth: z.string().min(1).max(100),
   }),
+});
+
+export const freezeSchema = z.object({
+  from: isoDate('Data de început'),
+  days: int('Numărul de zile', 1, 90),
+  reason: z.string().trim().max(200, 'Motivul poate avea maximum 200 de caractere.').default(''),
 });

@@ -130,6 +130,13 @@
               </button>
             }
           </div>
+          <app-member-freezes
+            [memberId]="m.id"
+            [subscription]="s"
+            [freezes]="m.freezes"
+            [isAdmin]="isAdmin()"
+            (changed)="refresh()"
+          />
         } @else {
           <h2 id="subscription-title" class="section-title">Abonament</h2>
           <p class="muted">Membrul nu are un abonament activ.</p>

@@ -174,3 +174,9 @@ details[open] summary {
   border-left: 3px solid var(--accent);
   background: var(--surface-hover);
 }
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

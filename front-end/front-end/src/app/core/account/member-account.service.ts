@@ -90,6 +90,11 @@ export class MemberAccountService {
     return this.http.delete<void>('/api/account/push', { params: { endpoint } });
   }
 
+  /** The member tapped or closed the Google review card. */
+  reviewDone(): Observable<void> {
+    return this.http.post<void>('/api/account/review/done', {});
+  }
+
   qr(): Observable<MemberQrCode> {
     return this.http.get<MemberQrCode>('/api/account/qr');
   }

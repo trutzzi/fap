@@ -22,6 +22,7 @@ import {
   pushSubscriptionSchema,
 } from '../../lib/validation.js';
 import { clearSessionCookie, readSessionToken, setSessionCookie } from '../auth/sessions.js';
+import { loadClub } from '../club/club.routes.js';
 import { checkInHistory, loadSummary } from '../members/member-queries.js';
 import { membersWithPhone, pinTakenOnPhone } from './member-access.js';
 import {
@@ -110,6 +111,7 @@ export function accountRouter({ db, clock, push }: Deps): Router {
     const summary = await loadSummary(db, memberId, today(clock));
     if (!summary) throw new HttpError(401, NOT_SIGNED_IN);
     const { id, firstName, fullName, initials, phone, courses, subscription, status } = summary;
+    const stats = memberStats(await statsCheckIns(memberId), today(clock));
     return {
       id,
       firstName,
@@ -127,8 +129,20 @@ export function accountRouter({ db, clock, push }: Deps): Router {
         where: { memberId, readAt: null },
       }),
       joinedAt: summary.joinedAt,
-      stats: memberStats(await statsCheckIns(memberId), today(clock)),
+      stats,
+      reviewPrompt: await reviewPrompt(memberId, stats.total),
     };
+  }
+
+  /** The Google review card: configured, enough check-ins, not tapped or closed yet. */
+  async function reviewPrompt(memberId: string, total: number): Promise<{ url: string } | null> {
+    const club = await loadClub(db);
+    if (!club.googleReviewUrl || total < club.reviewAfterCheckIns) return null;
+    const member = await db.member.findUnique({
+      where: { id: memberId },
+      select: { reviewPromptDoneAt: true },
+    });
+    return member && !member.reviewPromptDoneAt ? { url: club.googleReviewUrl } : null;
   }
 
   async function statsCheckIns(memberId: string): Promise<StatsCheckIn[]> {
@@ -241,6 +255,15 @@ export function accountRouter({ db, clock, push }: Deps): Router {
   router.delete('/push', async (req, res) => {
     const endpoint = String((req.query['endpoint'] as string | undefined) ?? '');
     await db.pushSubscription.deleteMany({ where: { endpoint, memberId: req.member!.id } });
+    res.status(204).end();
+  });
+
+  /** The member tapped or closed the review card: don't show it again. */
+  router.post('/review/done', async (req, res) => {
+    await db.member.update({
+      where: { id: req.member!.id },
+      data: { reviewPromptDoneAt: clock() },
+    });
     res.status(204).end();
   });
 

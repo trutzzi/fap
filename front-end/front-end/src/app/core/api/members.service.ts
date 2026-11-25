@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   BulkDeleteResult,
   CreatedMember,
+  FreezeInput,
   MemberAccessResult,
   MemberAttendance,
   MemberDetail,
@@ -62,6 +63,18 @@ export class MembersService {
   /** Admin: deletes all of the member's check-ins and refused scans. */
   clearHistory(memberId: string): Observable<MemberSummary> {
     return this.http.delete<MemberSummary>(`/api/members/${encodeURIComponent(memberId)}/checkins`);
+  }
+
+  /** Pauses the subscription for `days` from `from`; the end date moves later. */
+  freeze(id: string, input: FreezeInput): Observable<MemberSummary> {
+    return this.http.post<MemberSummary>(`/api/members/${encodeURIComponent(id)}/freezes`, input);
+  }
+
+  /** Admin: undoes a freeze. */
+  unfreeze(id: string, freezeId: string): Observable<MemberSummary> {
+    return this.http.delete<MemberSummary>(
+      `/api/members/${encodeURIComponent(id)}/freezes/${encodeURIComponent(freezeId)}`,
+    );
   }
 
   /** Admin: permanently deletes several members with all their history. */

@@ -15,6 +15,7 @@ const SMS_KIND_TEXT: Record<SmsKind, string> = {
   pin: 'cod PIN',
   reminder: 'reamintire expirare',
   announcement: 'anunț',
+  nudge: '„ne e dor de tine”',
 };
 
 /**

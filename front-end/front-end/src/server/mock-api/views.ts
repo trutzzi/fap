@@ -81,7 +81,7 @@ export class Views {
     const sub = member.subscription;
     if (!sub) return null;
     const plan = this.db.plans.find((p) => p.id === sub.planId)!;
-    const endDate = this.periodEnd(sub.startDate);
+    const endDate = addDays(this.periodEnd(sub.startDate), sub.extraDays ?? 0);
     const used = this.checkinsOf(member.id).filter(
       (c) => c.date >= sub.startDate && c.date <= endDate,
     ).length;
@@ -148,6 +148,7 @@ export class Views {
         (n) => n.memberId === member.id && n.readAt === null,
       ).length,
       joinedAt: member.joinedAt,
+      reviewPrompt: null, // filled in by the router, which knows the club settings
       stats: memberStats(
         this.db.checkins
           .filter((c) => c.memberId === member.id)
@@ -221,7 +222,14 @@ export class Views {
   }
 
   memberDetail(member: MemberEntity): Omit<MemberDetail, 'periods'> {
-    return { ...this.summary(member), history: this.history(member, 20) };
+    return {
+      ...this.summary(member),
+      history: this.history(member, 20),
+      freezes: this.db.freezes
+        .filter((f) => f.memberId === member.id)
+        .sort((a, b) => b.from.localeCompare(a.from))
+        .map(({ memberId: _memberId, ...f }) => f),
+    };
   }
 
   attendance(member: MemberEntity, month: string): MemberAttendance {

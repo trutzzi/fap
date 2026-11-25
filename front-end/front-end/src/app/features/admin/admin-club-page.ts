@@ -104,6 +104,44 @@ import { FeedbackSound, FeedbackTone } from '../../core/util/feedback-sound';
           <app-sms-credit />
         </div>
         <fieldset class="field">
+          <legend>Implicarea membrilor</legend>
+          <label class="check">
+            <input type="checkbox" formControlName="inactivityNudge" />
+            „Ne e dor de tine”: notificare după 14 zile fără antrenament
+          </label>
+          <label class="check">
+            <input type="checkbox" formControlName="inactivityNudgeSms" />
+            Trimite-o și prin SMS
+          </label>
+          <span class="field-hint">
+            O singură dată pe absență, doar membrilor cu abonament valabil și nesuspendat.
+          </span>
+          <div class="form-grid">
+            <div class="field">
+              <label for="club-review-url">Link recenzie Google</label>
+              <input
+                id="club-review-url"
+                class="input"
+                type="url"
+                formControlName="googleReviewUrl"
+                placeholder="https://g.page/r/…/review"
+              />
+              <span class="field-hint">Gol: nu se cere recenzie.</span>
+            </div>
+            <div class="field">
+              <label for="club-review-after">Cere recenzia după (check-in-uri)</label>
+              <input
+                id="club-review-after"
+                class="input"
+                type="number"
+                min="1"
+                max="500"
+                formControlName="reviewAfterCheckIns"
+              />
+            </div>
+          </div>
+        </fieldset>
+        <fieldset class="field">
           <legend>Sunete kiosk</legend>
           <label for="club-volume" class="volume">
             Volum
@@ -193,6 +231,10 @@ export class AdminClubPage {
     smsEnabled: [false],
     kioskVolume: [60],
     expiryReminderSms: [false],
+    googleReviewUrl: [''],
+    reviewAfterCheckIns: [10],
+    inactivityNudge: [false],
+    inactivityNudgeSms: [false],
   });
 
   constructor() {

@@ -11,10 +11,11 @@ import { fromDbDate, toDbDate, type Db } from '../../db.js';
 import type { Deps } from '../../deps.js';
 import { isActive, matchesSearch, normalizeRfid } from '../../domain/membership.js';
 import { today } from '../../lib/clock.js';
-import { addMonthsToMonth, toMonth } from '../../lib/dates.js';
+import { addDays, addMonthsToMonth, toMonth } from '../../lib/dates.js';
 import { badRequest, conflict, notFound } from '../../lib/http-error.js';
 import {
   bulkDeleteSchema,
+  freezeSchema,
   memberSchema,
   membersQuerySchema,
   monthSchema,
@@ -148,10 +149,25 @@ export function membersRouter(deps: Deps): Router {
       orderBy: { startDate: 'desc' },
       take: 12,
     });
+    const freezes = await db.subscriptionFreeze.findMany({
+      where: { memberId: member.id },
+      include: { createdBy: { select: { name: true } } },
+      orderBy: { from: 'desc' },
+      take: 20,
+    });
     res.json({
       ...member,
       history: await checkInHistory(db, member, 20),
       periods: periods.map((p) => toPeriod(p, member.subscription?.startDate ?? null)),
+      freezes: freezes.map((f) => ({
+        id: f.id,
+        from: fromDbDate(f.from),
+        to: fromDbDate(f.to),
+        days: f.days,
+        reason: f.reason,
+        createdBy: f.createdBy?.name ?? null,
+        createdAt: f.createdAt.toISOString(),
+      })),
     });
   });
 
@@ -226,6 +242,77 @@ export function membersRouter(deps: Deps): Router {
     await db.$transaction([
       db.checkIn.deleteMany({ where: { memberId: id } }),
       db.refusedScan.deleteMany({ where: { memberId: id } }),
+    ]);
+    res.json(await summaryOrThrow(id));
+  });
+
+  /**
+   * Pauses the current subscription (holiday, injury): its end date, and the sold period's,
+   * move later by the frozen days, so unused sessions carry over. Freezes can't overlap.
+   */
+  router.post('/:id/freezes', async (req, res) => {
+    const id = req.params.id;
+    const { from, days, reason } = parse(freezeSchema, req.body);
+    const sub = await db.subscription.findUnique({ where: { memberId: id } });
+    if (!sub) throw badRequest('Membrul nu are un abonament de suspendat.');
+    const start = fromDbDate(sub.startDate);
+    const end = fromDbDate(sub.endDate);
+    if (from < start || from > end) {
+      throw badRequest('Suspendarea trebuie să înceapă în perioada abonamentului curent.');
+    }
+    const to = addDays(from, days - 1);
+    const overlapping = await db.subscriptionFreeze.count({
+      where: { memberId: id, from: { lte: toDbDate(to) }, to: { gte: toDbDate(from) } },
+    });
+    if (overlapping) throw conflict('Perioada se suprapune cu o suspendare existentă.');
+    await db.$transaction([
+      db.subscriptionFreeze.create({
+        data: {
+          memberId: id,
+          from: toDbDate(from),
+          to: toDbDate(to),
+          days,
+          reason,
+          createdById: req.user?.id ?? null,
+          createdAt: clock(),
+        },
+      }),
+      db.subscription.update({
+        where: { memberId: id },
+        data: { endDate: toDbDate(addDays(end, days)) },
+      }),
+      db.subscriptionPeriod.updateMany({
+        where: { memberId: id, startDate: sub.startDate },
+        data: { endDate: toDbDate(addDays(end, days)) },
+      }),
+    ]);
+    res.status(201).json(await summaryOrThrow(id));
+  });
+
+  /** Admin: undoes a freeze; while it belongs to the current subscription, the end moves back. */
+  router.delete('/:id/freezes/:freezeId', async (req, res) => {
+    assertAdmin(req);
+    const id = req.params.id;
+    const freeze = await db.subscriptionFreeze.findFirst({
+      where: { id: req.params.freezeId, memberId: id },
+    });
+    if (!freeze) throw notFound('Suspendarea nu a fost găsită.');
+    const sub = await db.subscription.findUnique({ where: { memberId: id } });
+    const current = sub && freeze.from >= sub.startDate && freeze.from <= sub.endDate;
+    await db.$transaction([
+      db.subscriptionFreeze.delete({ where: { id: freeze.id } }),
+      ...(current
+        ? [
+            db.subscription.update({
+              where: { memberId: id },
+              data: { endDate: toDbDate(addDays(fromDbDate(sub.endDate), -freeze.days)) },
+            }),
+            db.subscriptionPeriod.updateMany({
+              where: { memberId: id, startDate: sub.startDate },
+              data: { endDate: toDbDate(addDays(fromDbDate(sub.endDate), -freeze.days)) },
+            }),
+          ]
+        : []),
     ]);
     res.json(await summaryOrThrow(id));
   });

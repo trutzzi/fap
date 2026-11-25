@@ -3,6 +3,7 @@ import type { SubscriptionUsage } from '../src/contract/models.js';
 import {
   accessSmsText,
   announcementSmsText,
+  inactivityNudgeText,
   generateMemberPin,
   parseQrToken,
   phoneKey,
@@ -251,5 +252,21 @@ describe('announcement SMS', () => {
     expect(long.length).toBeLessThanOrEqual(160);
     expect(long.length).toBeGreaterThan(150);
     expect(long.endsWith('... Detalii: https://x.ro/cont')).toBe(true);
+  });
+});
+
+describe('inactivity nudge SMS', () => {
+  it('fits one GSM SMS with the portal link', () => {
+    const text = inactivityNudgeText(
+      'Fight Academy Pitești',
+      14,
+      'https://fap.valentintruta.ro/cont',
+    );
+    expect(text).toBe(
+      'Fight Academy Pitesti: ne e dor de tine! N-ai mai fost la antrenament de 14 zile. Te asteptam! https://fap.valentintruta.ro/cont',
+    );
+    expect(
+      inactivityNudgeText('Ș'.repeat(300), 14, 'https://x.ro/cont').length,
+    ).toBeLessThanOrEqual(160);
   });
 });

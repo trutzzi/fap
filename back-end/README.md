@@ -73,6 +73,8 @@ All responses are JSON. Errors have the shape `{ "message": "…" }`, with messa
 | DELETE | `/api/members/:id/checkins/:checkInId` · `/api/members/:id/checkins` | Remove one mistaken check-in (staff) / clear the member's check-in history (admin) |
 | GET | `/api/members/:id/payments` | A member's payments, newest first (staff) |
 | PUT | `/api/periods/:id` | Correct a sold period's price, `{ price }` or `null` (admin); wrong payments are removed with DELETE `/api/payments/:id` (admin) |
+| POST / DELETE | `/api/members/:id/freezes` · `/api/members/:id/freezes/:freezeId` | Freeze the subscription (`{ from, days, reason }`, staff) / undo a freeze (admin) |
+| POST | `/api/account/review/done` | The member tapped or closed the Google review card |
 | POST | `/api/members/bulk-delete` | Permanently delete several members with their history (`{ memberIds }`, admin) |
 | GET / POST | `/api/announcements` · DELETE `/api/announcements/:id` | Announcements to members: list with read counts, send (`{ title, body, audience, sms? }`; with `sms` one SMS per phone is sent in the background), withdraw (staff) |
 | GET | `/api/account/announcements` · POST `/api/account/announcements/read` | The member's announcements / mark them read |

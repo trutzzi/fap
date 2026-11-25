@@ -47,6 +47,7 @@ model User {
   lastLoginAt         DateTime?            @map("last_login_at") @db.Timestamptz
   sessions            Session[]
   soldPeriods         SubscriptionPeriod[]
+  freezes             SubscriptionFreeze[]
   receivedPayments    Payment[]
   /// Courses this user coaches (role `coach`).
   coachedCourses      Course[]
@@ -86,21 +87,28 @@ model MemberSession {
 
 /// The club's details; a single row with id 1.
 model Club {
-  id                Int      @id @default(1)
-  name              String
-  address           String
-  phone             String
-  email             String
-  website           String
+  id                  Int      @id @default(1)
+  name                String
+  address             String
+  phone               String
+  email               String
+  website             String
   /// IANA timezone for "today", training times and check-in dates.
-  timezone          String
+  timezone            String
   /// Text new member PINs by SMS (SMSLink). Off: reception hands the PIN over in person.
-  smsEnabled        Boolean  @default(false) @map("sms_enabled")
+  smsEnabled          Boolean  @default(false) @map("sms_enabled")
   /// Volume of the kiosk's check-in sounds, 0–100 (0 = silent).
-  kioskVolume       Int      @default(60) @map("kiosk_volume") @db.SmallInt
+  kioskVolume         Int      @default(60) @map("kiosk_volume") @db.SmallInt
   /// Text members 3 days before their subscription ends (once per period; needs SMSLink).
-  expiryReminderSms Boolean  @default(false) @map("expiry_reminder_sms")
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  expiryReminderSms   Boolean  @default(false) @map("expiry_reminder_sms")
+  /// Google review link shown to members after `reviewAfterCheckIns` check-ins; empty = off.
+  googleReviewUrl     String   @default("") @map("google_review_url")
+  reviewAfterCheckIns Int      @default(10) @map("review_after_check_ins") @db.SmallInt
+  /// "Ne e dor de tine": nudge members with a valid subscription after 14 days away.
+  inactivityNudge     Boolean  @default(false) @map("inactivity_nudge")
+  /// Also text the nudge (one SMS per absence).
+  inactivityNudgeSms  Boolean  @default(false) @map("inactivity_nudge_sms")
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("club")
 }
@@ -157,34 +165,39 @@ model TrainingSlot {
 }
 
 model Member {
-  id                String                  @id @default(cuid())
-  firstName         String                  @map("first_name")
-  lastName          String                  @map("last_name")
-  phone             String
-  email             String                  @default("")
+  id                 String                  @id @default(cuid())
+  firstName          String                  @map("first_name")
+  lastName           String                  @map("last_name")
+  phone              String
+  email              String                  @default("")
   /// Normalized card code: uppercase hex, no separators.
-  rfid              String?                 @unique
-  joinedAt          DateTime                @map("joined_at") @db.Date
+  rfid               String?                 @unique
+  joinedAt           DateTime                @map("joined_at") @db.Date
   /// GDPR consent to store a photo (for minors: a parent's consent). Required for `photo`.
-  photoConsent      Boolean                 @default(false) @map("photo_consent")
+  photoConsent       Boolean                 @default(false) @map("photo_consent")
   /// Member portal password (generated and sent by SMS); null until one is issued.
-  passwordHash      String?                 @map("password_hash")
+  passwordHash       String?                 @map("password_hash")
   /// HMAC key of the member's rotating QR code; created on first use.
-  qrSecret          String?                 @map("qr_secret")
-  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz
-  courses           MemberCourse[]
-  subscription      Subscription?
-  checkIns          CheckIn[]
-  photo             MemberPhoto?
-  periods           SubscriptionPeriod[]
-  payments          Payment[]
-  refusedScans      RefusedScan[]
-  sessions          MemberSession[]
-  announcements     AnnouncementRecipient[]
-  notifications     MemberNotification[]
-  pushSubscriptions PushSubscription[]
-  smsMessages       SmsMessage[]
+  qrSecret           String?                 @map("qr_secret")
+  /// The member tapped or closed the Google review card.
+  reviewPromptDoneAt DateTime?               @map("review_prompt_done_at") @db.Timestamptz
+  /// The last check-in date (or join date) an inactivity nudge was sent for: one per absence.
+  inactivityNudgeFor DateTime?               @map("inactivity_nudge_for") @db.Date
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  courses            MemberCourse[]
+  subscription       Subscription?
+  checkIns           CheckIn[]
+  photo              MemberPhoto?
+  periods            SubscriptionPeriod[]
+  payments           Payment[]
+  refusedScans       RefusedScan[]
+  sessions           MemberSession[]
+  announcements      AnnouncementRecipient[]
+  notifications      MemberNotification[]
+  pushSubscriptions  PushSubscription[]
+  smsMessages        SmsMessage[]
+  freezes            SubscriptionFreeze[]
 
   @@index([lastName, firstName])
   @@map("members")
@@ -387,6 +400,7 @@ enum SmsKind {
   pin
   reminder
   announcement
+  nudge
 }
 
 /// Every SMS the app tried to send (staff feed); the text is not kept (it may hold a PIN).
@@ -441,4 +455,22 @@ model AppSetting {
   value String
 
   @@map("app_settings")
+}
+
+/// A pause of the member's subscription (holiday, injury): its end date moved by `days`.
+model SubscriptionFreeze {
+  id          String   @id @default(cuid())
+  memberId    String   @map("member_id")
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  /// Local dates, inclusive: `to` = `from` + days − 1.
+  from        DateTime @db.Date
+  to          DateTime @db.Date
+  days        Int      @db.SmallInt
+  reason      String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdById String?  @map("created_by_id")
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([memberId])
+  @@map("subscription_freezes")
 }

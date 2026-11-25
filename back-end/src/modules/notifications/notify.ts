@@ -13,6 +13,8 @@ export interface NotificationInput {
   kind: MemberNotificationKind;
   title: string;
   body: string;
+  /** Where tapping the phone notification goes (default `/cont`); not stored. */
+  url?: string;
 }
 
 /**
@@ -26,12 +28,18 @@ export async function notifyMembers(
 ): Promise<void> {
   if (memberIds.length === 0) return;
   await deps.db.memberNotification.createMany({
-    data: memberIds.map((memberId) => ({ memberId, ...notification, createdAt: deps.clock() })),
+    data: memberIds.map((memberId) => ({
+      memberId,
+      kind: notification.kind,
+      title: notification.title,
+      body: notification.body,
+      createdAt: deps.clock(),
+    })),
   });
   void pushTo(deps, memberIds, {
     title: notification.title,
     body: notification.body,
-    url: '/cont',
+    url: notification.url ?? '/cont',
   });
 }
 

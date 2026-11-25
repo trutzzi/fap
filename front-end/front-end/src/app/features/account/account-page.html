@@ -35,6 +35,27 @@
       </div>
     </section>
 
+    @if (a.reviewPrompt; as r) {
+      <section class="card review" aria-labelledby="review-title">
+        <h2 id="review-title" class="section-title">Îți place la noi?</h2>
+        <p class="muted small">
+          Ai deja {{ a.stats.total }} de antrenamente. O recenzie pe Google ne ajută mult să creștem
+          echipa. Durează un minut.
+        </p>
+        <div class="review-actions">
+          <a
+            class="btn btn-primary"
+            [href]="r.url"
+            target="_blank"
+            rel="noopener"
+            (click)="reviewDone()"
+            >Lasă o recenzie</a
+          >
+          <button type="button" class="btn btn-ghost" (click)="reviewDone()">Nu acum</button>
+        </div>
+      </section>
+    }
+
     <app-member-notifications (seen)="refreshAll()" />
 
     <section class="card" aria-labelledby="stats-title">
@@ -86,6 +107,8 @@
       }
       <p class="fact"><strong>Știai că…?</strong> {{ funFact() }}</p>
     </section>
+
+    <app-member-badges [stats]="a.stats" />
 
     @if (!install.installed() && (install.canInstall() || install.isIos())) {
       <section class="card install" aria-labelledby="install-title">

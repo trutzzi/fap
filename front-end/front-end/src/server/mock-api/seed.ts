@@ -418,5 +418,6 @@ export function seed(now = new Date()): Db {
     payments: [],
     announcements: [],
     notifications: [],
+    freezes: [],
   };
 }

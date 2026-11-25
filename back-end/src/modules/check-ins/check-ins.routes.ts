@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import type { CheckInOutcome, CheckInResult, KioskStatus } from '../../contract/models.js';
+import {
+  CHECKIN_MILESTONES,
+  type CheckInOutcome,
+  type CheckInResult,
+  type KioskStatus,
+} from '../../contract/models.js';
 import { toDbDate } from '../../db.js';
 import type { RefusalReason } from '../../generated/prisma/client.js';
 import type { Deps } from '../../deps.js';
@@ -9,6 +14,7 @@ import { currentSlot } from '../../domain/schedule.js';
 import { formatDate, isoWeekday, toIsoDate } from '../../lib/dates.js';
 import { notFound } from '../../lib/http-error.js';
 import { checkInSchema, parse } from '../../lib/validation.js';
+import { loadClub } from '../club/club.routes.js';
 import { loadSummary } from '../members/member-queries.js';
 import { notifyMembers, type NotificationInput } from '../notifications/notify.js';
 
@@ -129,8 +135,36 @@ export function checkInsRouter({ db, clock, push }: Deps): Router {
     });
     const notification = checkInNotification(result);
     if (notification) await notifyMembers({ db, push, clock }, [result.member!.id], notification);
+    if (result.outcome === 'allowed') await celebrate(result.member!.id);
     res.json(result);
   });
+
+  /** After an admitted check-in: a badge at milestones, and the Google review ask once. */
+  async function celebrate(memberId: string): Promise<void> {
+    const total = await db.checkIn.count({ where: { memberId } });
+    if (total >= 10 && CHECKIN_MILESTONES.includes(total)) {
+      await notifyMembers({ db, push, clock }, [memberId], {
+        kind: 'checkin',
+        title: 'Insignă nouă!',
+        body: `Ai ajuns la ${total} de antrenamente. Felicitări, ține-o tot așa!`,
+      });
+    }
+    const club = await loadClub(db);
+    if (club.googleReviewUrl && total === club.reviewAfterCheckIns) {
+      const member = await db.member.findUnique({
+        where: { id: memberId },
+        select: { reviewPromptDoneAt: true },
+      });
+      if (member && !member.reviewPromptDoneAt) {
+        await notifyMembers({ db, push, clock }, [memberId], {
+          kind: 'checkin',
+          title: 'Îți place la noi?',
+          body: 'Ne-ar ajuta mult o recenzie pe Google. Durează un minut. Mulțumim!',
+          url: club.googleReviewUrl,
+        });
+      }
+    }
+  }
 
   return router;
 }

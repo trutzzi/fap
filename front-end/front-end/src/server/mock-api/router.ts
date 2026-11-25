@@ -32,7 +32,7 @@ import {
   SubscriptionInput,
   TrainingSlotInput,
 } from '../../app/core/api/models';
-import { isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
+import { addDays, isIsoDate, startOfWeek, toIsoDate } from '../../app/core/util/dates';
 import { DEMO_USERS, MockSessions } from './auth';
 import { MockFinance } from './finance';
 import { MockReports } from './reports';
@@ -143,6 +143,10 @@ export function createMockApi(db: Db = seed()): express.Router {
     smsEnabled: false,
     kioskVolume: 60,
     expiryReminderSms: false,
+    googleReviewUrl: '',
+    reviewAfterCheckIns: 10,
+    inactivityNudge: false,
+    inactivityNudgeSms: false,
   };
   const api = express.Router();
   api.use(express.json());
@@ -248,7 +252,20 @@ export function createMockApi(db: Db = seed()): express.Router {
     );
     if (!member) throw new HttpError(401, 'Număr de telefon sau PIN greșit.');
     memberSessions.start(res, member.id);
-    res.json(views.account(member));
+    res.json(accountOf(member));
+  });
+
+  /** The member's account, with the Google review card when it is due. */
+  const accountOf = (member: MemberEntity) => {
+    const account = views.account(member);
+    const due =
+      club.googleReviewUrl && !member.reviewDone && account.stats.total >= club.reviewAfterCheckIns;
+    return { ...account, reviewPrompt: due ? { url: club.googleReviewUrl } : null };
+  };
+
+  api.post('/account/review/done', (req, res) => {
+    portalMember(req).reviewDone = true;
+    res.status(204).end();
   });
 
   api.post('/account/logout', (req, res) => {
@@ -257,7 +274,7 @@ export function createMockApi(db: Db = seed()): express.Router {
   });
 
   api.get('/account', (req, res) => {
-    res.json(views.account(portalMember(req)));
+    res.json(accountOf(portalMember(req)));
   });
 
   api.get('/account/qr', (req, res) => {
@@ -553,7 +570,20 @@ export function createMockApi(db: Db = seed()): express.Router {
       kioskVolume:
         b['kioskVolume'] === undefined ? 60 : integer(b, 'kioskVolume', 'Volumul', 0, 100),
       expiryReminderSms: b['expiryReminderSms'] === true,
+      googleReviewUrl: text(b, 'googleReviewUrl', 'Linkul de recenzie', {
+        required: false,
+        max: 500,
+      }),
+      reviewAfterCheckIns:
+        b['reviewAfterCheckIns'] === undefined
+          ? 10
+          : integer(b, 'reviewAfterCheckIns', 'Numărul de check-in-uri', 1, 500),
+      inactivityNudge: b['inactivityNudge'] === true,
+      inactivityNudgeSms: b['inactivityNudgeSms'] === true,
     };
+    if (club.googleReviewUrl && !club.googleReviewUrl.startsWith('https://')) {
+      throw badRequest('Linkul de recenzie trebuie să înceapă cu https://.');
+    }
     res.json(club);
   });
 
@@ -866,6 +896,59 @@ export function createMockApi(db: Db = seed()): express.Router {
     const member = findMember(req.params['id']);
     db.checkins = db.checkins.filter((c) => c.memberId !== member.id);
     db.refusedScans = db.refusedScans.filter((r) => r.memberId !== member.id);
+    res.json(views.summary(member));
+  });
+
+  api.post('/members/:id/freezes', (req, res) => {
+    const member = findMember(req.params['id']);
+    const sub = member.subscription;
+    if (!sub) throw badRequest('Membrul nu are un abonament de suspendat.');
+    const b = (req.body ?? {}) as Body;
+    const from = typeof b['from'] === 'string' && isIsoDate(b['from']) ? b['from'] : '';
+    if (!from) throw badRequest('Data de început este invalidă.');
+    const days = integer(b, 'days', 'Numărul de zile', 1, 90);
+    const end = views.summary(member).subscription!.endDate;
+    if (from < sub.startDate || from > end) {
+      throw badRequest('Suspendarea trebuie să înceapă în perioada abonamentului curent.');
+    }
+    const to = addDays(from, days - 1);
+    if (db.freezes.some((f) => f.memberId === member.id && f.from <= to && f.to >= from)) {
+      throw new HttpError(409, 'Perioada se suprapune cu o suspendare existentă.');
+    }
+    db.freezes.push({
+      id: nextId('frz'),
+      memberId: member.id,
+      from,
+      to,
+      days,
+      reason: text(b, 'reason', 'Motivul', { required: false, max: 200 }),
+      createdBy: sessions.user(req)!.name,
+      createdAt: new Date().toISOString(),
+    });
+    sub.extraDays = (sub.extraDays ?? 0) + days;
+    const period = db.periods.find(
+      (p) => p.memberId === member.id && p.startDate === sub.startDate,
+    );
+    if (period) period.endDate = addDays(period.endDate, days);
+    res.status(201).json(views.summary(member));
+  });
+
+  api.delete('/members/:id/freezes/:freezeId', (req, res) => {
+    assertAdmin(req);
+    const member = findMember(req.params['id']);
+    const freeze = db.freezes.find(
+      (f) => f.id === req.params['freezeId'] && f.memberId === member.id,
+    );
+    if (!freeze) throw new HttpError(404, 'Suspendarea nu a fost găsită.');
+    db.freezes = db.freezes.filter((f) => f !== freeze);
+    const sub = member.subscription;
+    if (sub && freeze.from >= sub.startDate) {
+      sub.extraDays = Math.max((sub.extraDays ?? 0) - freeze.days, 0);
+      const period = db.periods.find(
+        (p) => p.memberId === member.id && p.startDate === sub.startDate,
+      );
+      if (period) period.endDate = addDays(period.endDate, -freeze.days);
+    }
     res.json(views.summary(member));
   });
 

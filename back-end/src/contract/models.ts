@@ -106,6 +106,13 @@ export interface Club {
    * SMSLink configured on the server).
    */
   expiryReminderSms: boolean;
+  /** Google review link shown to members after `reviewAfterCheckIns` check-ins; `''` = off. */
+  googleReviewUrl: string;
+  reviewAfterCheckIns: number;
+  /** "Ne e dor de tine": nudge members with a valid subscription after 14 days away. */
+  inactivityNudge: boolean;
+  /** Also text the nudge (one SMS per absence). */
+  inactivityNudgeSms: boolean;
 }
 
 export type ClubInput = Club;
@@ -199,6 +206,28 @@ export interface MemberDetail extends MemberSummary {
   history: CheckInRecord[];
   /** Most recent first. */
   periods: SubscriptionPeriod[];
+  /** Pauses of the subscription, most recent first. */
+  freezes: SubscriptionFreeze[];
+}
+
+/** A pause (holiday, injury): the subscription's end date moved later by `days`. */
+export interface SubscriptionFreeze {
+  id: string;
+  /** Inclusive local dates. */
+  from: string;
+  to: string;
+  days: number;
+  reason: string;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+/** `POST /api/members/:id/freezes`. */
+export interface FreezeInput {
+  from: string;
+  /** 1–90. */
+  days: number;
+  reason?: string;
 }
 
 export interface MemberAttendance {
@@ -544,7 +573,16 @@ export interface MemberAccount {
   unreadNotifications: number;
   joinedAt: string;
   stats: MemberStats;
+  /** Shown until the member taps or closes it; `null` when not due or not configured. */
+  reviewPrompt: { url: string } | null;
 }
+
+/** Check-in counts that earn a badge (one notification from 10 on). */
+export const CHECKIN_MILESTONES = [1, 10, 25, 50, 100, 200, 300, 500];
+/** Consecutive weeks with a check-in that earn a badge. */
+export const STREAK_MILESTONES = [4, 8, 12, 26, 52];
+/** Days without a check-in before the "Ne e dor de tine" nudge. */
+export const INACTIVITY_NUDGE_DAYS = 14;
 
 /** Attendance figures for the member portal ("Statisticile tale"). */
 export interface MemberStats {

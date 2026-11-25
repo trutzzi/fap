@@ -24,6 +24,7 @@ import { funFactOfTheDay } from '../../core/account/fun-facts';
 import { onInterval } from '../../core/util/interval';
 import { IsoDatePipe } from '../../shared/ui/formatting';
 import { QrCode } from '../../shared/ui/qr-code';
+import { MemberBadges } from './member-badges';
 import { MemberNotifications } from './member-notifications';
 import { SessionMeter } from '../../shared/ui/session-meter';
 import { StatusBadge } from '../../shared/ui/status-badge';
@@ -45,6 +46,7 @@ const ACCOUNT_REFRESH_MS = 60_000;
     IsoDatePipe,
     QrCode,
     MemberNotifications,
+    MemberBadges,
     SessionMeter,
     StatusBadge,
   ],
@@ -150,6 +152,11 @@ export class AccountPage {
         },
         error: (err) => this.pinError.set(errorMessage(err)),
       });
+  }
+
+  /** Tapped or closed: the card doesn't come back. */
+  protected reviewDone(): void {
+    this.accounts.reviewDone().subscribe(() => this.refresh());
   }
 
   protected logout(): void {
